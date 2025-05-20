@@ -1,0 +1,28 @@
+name: Configure GitHub Pages Settings
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  configure-pages:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        with:
+          # Specify deployment source branch
+          source_dir: ./dist
+          
+      - name: Output Pages Configuration
+        run: |
+          echo "GitHub Pages has been configured."
+          echo "Please check the Settings > Pages section of your repository to ensure deployment source is set to 'GitHub Actions'."

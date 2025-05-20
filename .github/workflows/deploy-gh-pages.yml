@@ -18,16 +18,31 @@ jobs:
         node-version: 18.x
         cache: 'npm'
     
-    - name: Install dependencies
-      run: npm ci
+    - name: List current directory contents
+      run: ls -la
+    
+    - name: Update package-lock.json
+      run: npm install
       
     - name: Create demo build (skip tests)
       run: |
         echo "Skipping tests and building demo directly"
-        npm run build:skip-tests
+        npm run build:demo
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        SKIP_TESTS: 'true'
+    
+    - name: Verify build
+      run: |
+        echo "Contents of dist directory:"
+        ls -la dist/
+        if [ -f "dist/index.html" ]; then
+          echo "✓ index.html exists"
+        else
+          echo "✗ index.html is missing!"
+          exit 1
+        fi
     
     - name: Add .nojekyll file
       run: |
@@ -40,5 +55,11 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./dist
         force_orphan: true  # Create a new orphan branch for the deployment
-        # Make sure .nojekyll is included in deployment
-        include_dotfiles: true
+        include_dotfiles: true  # Make sure .nojekyll is included in deployment
+    
+    - name: Output deployment URL
+      run: |
+        echo "Deployed to: https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/math-llm/"
+        echo "If you see a 404 error, please check that:"
+        echo "1. The repository settings have GitHub Pages enabled"
+        echo "2. The deployment branch (gh-pages) exists and contains the correct files"

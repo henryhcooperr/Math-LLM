@@ -16,12 +16,38 @@ if (isGitHubAction || skipTests) {
   console.log('- ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY);
 }
 
+// Get the repository name to handle GitHub Pages path correctly
+const getRepoName = () => {
+  if (process.env.GITHUB_REPOSITORY) {
+    return process.env.GITHUB_REPOSITORY.split('/')[1];
+  }
+  return '';
+};
+
+// Determine the publicPath for GitHub Pages
+const getPublicPath = () => {
+  if (isGitHubAction) {
+    const repoName = getRepoName();
+    console.log(`Building for GitHub Pages with repository name: ${repoName}`);
+    // Use root path when deployed directly to username.github.io
+    if (repoName.toLowerCase() === 'username.github.io') {
+      return '/';
+    }
+    // Otherwise use the repository name as the base path
+    return `/${repoName}/`;
+  }
+  return './';
+};
+
+const publicPath = getPublicPath();
+console.log(`Using publicPath: ${publicPath}`);
+
 module.exports = {
   entry: './src/demo/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'demo.bundle.js',
-    publicPath: './',  // This makes GitHub Pages paths work correctly
+    publicPath: publicPath,
   },
   module: {
     rules: [
@@ -44,7 +70,8 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './src/demo/index.html',
-      title: 'Math-LLM Demo'
+      title: 'Math-LLM Demo',
+      filename: 'index.html', // Ensure the output is named index.html
     }),
     new Dotenv({
       systemvars: true, // Load all system environment variables as well
