@@ -29,9 +29,16 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     
+    - name: Add .nojekyll file
+      run: |
+        touch ./dist/.nojekyll
+        echo "Created .nojekyll file to prevent Jekyll processing"
+    
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./dist
         force_orphan: true  # Create a new orphan branch for the deployment
+        # Make sure .nojekyll is included in deployment
+        include_dotfiles: true

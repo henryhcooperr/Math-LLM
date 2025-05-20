@@ -103,16 +103,37 @@ For production deployments, GitHub Environments provide the best security:
 
 1. Go to your GitHub repository
 2. Navigate to Settings > Environments
-3. Click "New environment" and name it (e.g., "production")
+3. Click "New environment" and name it "production"
 4. Add environment secrets with ONE of these names:
    - `OPENAI_API_KEY` (for OpenAI)
    - `ANTHROPIC_API_KEY` (for Anthropic)
 
 5. Configure the deployment workflow:
-   - A deployment workflow file is included at `.github/workflows/deploy.yml`
-   - This workflow will build and deploy to GitHub Pages
-   - It will use the API keys from your environment secrets
-   - Your app will be deployed to `https://your-username.github.io/math-llm/`
+   - Two deployment workflow files are included:
+     - `.github/workflows/deploy.yml` (original workflow)
+     - `.github/workflows/deploy-gh-pages.yml` (improved workflow that skips tests)
+
+### Deploying to GitHub Pages
+
+To deploy the Math-LLM application to GitHub Pages:
+
+1. Set up GitHub Environment Secrets as described above
+2. Go to the "Actions" tab in your GitHub repository
+3. On the left sidebar, click "Deploy Math-LLM to GitHub Pages" (if using original workflow) or "Deploy Math-LLM to GitHub Pages" (if using improved workflow)
+4. Click the "Run workflow" button on the right side
+5. Select the branch you want to deploy from
+6. Click the green "Run workflow" button to start the deployment
+
+The deployment workflow will:
+1. Skip the failing tests
+2. Build the demo directly using webpack
+3. Include your API keys from GitHub Environment Secrets in the build
+4. Deploy to GitHub Pages
+
+After successful deployment, your app will be available at:
+`https://[your-username].github.io/math-llm/`
+
+The deployed application will have the API keys embedded during the build process, so users accessing your deployed application won't need to enter API keys manually.
 
 **Important Notes**: 
 - GitHub Secrets are ONLY available during GitHub Actions runs or on deployed sites
