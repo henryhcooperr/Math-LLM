@@ -20,7 +20,8 @@ jobs:
     - name: Create simple index.html
       run: |
         mkdir -p gh-pages
-        echo '<!DOCTYPE html>
+        cat > gh-pages/index.html << 'EOL'
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -39,7 +40,8 @@ jobs:
     <p>You can now run the full deployment workflow.</p>
   </div>
 </body>
-</html>' > gh-pages/index.html
+</html>
+EOL
         echo "" > gh-pages/.nojekyll
     
     - name: Deploy to GitHub Pages
