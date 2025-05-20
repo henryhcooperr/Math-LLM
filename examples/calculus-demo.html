@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math-LLM Calculus Examples</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      background-color: #f8f9fa;
+    }
+    
+    header {
+      background-color: #3090FF;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    .intro {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .example-container {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    
+    h2 {
+      border-bottom: 2px solid #3090FF;
+      padding-bottom: 0.5rem;
+    }
+    
+    .visualization {
+      margin-top: 1rem;
+      min-height: 300px;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .function-info {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #f5f5f5;
+      border-left: 4px solid #3090FF;
+    }
+    
+    .explanation {
+      margin-top: 1rem;
+    }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+    }
+    
+    footer {
+      margin-top: 2rem;
+      padding: 1rem;
+      background-color: #2c3e50;
+      color: white;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Math-LLM Calculus Examples</h1>
+    <p>Demonstrating Calculus Operations with Wolfram Alpha Integration</p>
+  </header>
+  
+  <div class="container">
+    <div class="intro">
+      <h2>Introduction</h2>
+      <p>This demo showcases the Math-LLM system's capability to handle calculus problems using Wolfram Alpha integration. The examples below demonstrate derivatives, integrals, limits, and combined operations, visualizing the mathematical concepts for better understanding.</p>
+      <p>Each example extracts the mathematical expression from a natural language problem, processes it using Wolfram Alpha's computational power, and creates an interactive visualization with educational content.</p>
+    </div>
+    
+    <div id="app">
+      <!-- JavaScript will insert example containers here -->
+      <div class="loading">Loading examples...</div>
+    </div>
+  </div>
+  
+  <footer>
+    <p>Math-LLM - Mathematical Visualization System</p>
+    <p>Powered by Wolfram Alpha Integration</p>
+  </footer>
+  
+  <!-- Load the example script -->
+  <script type="module" src="calculus-examples.js"></script>
+</body>
+</html>

@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Visualization System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+        }
+        
+        .visualization-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 30px;
+            background-color: #f9f9f9;
+        }
+        
+        .visualization-display {
+            height: 400px;
+            width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            background-color: white;
+        }
+        
+        .input-section {
+            margin-bottom: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            font-family: inherit;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .result-section {
+            margin-top: 20px;
+        }
+        
+        .result-section h3 {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .tab-container {
+            margin-top: 20px;
+        }
+        
+        .tab-buttons {
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        
+        .tab-button {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            padding: 8px 15px;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+        }
+        
+        .tab-button.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .code-block {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .educational-content {
+            line-height: 1.8;
+        }
+        
+        .educational-content ul {
+            padding-left: 20px;
+        }
+        
+        .example-list {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        
+        .example-list h2 {
+            color: #2c3e50;
+        }
+        
+        .example-button {
+            background-color: #2ecc71;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .example-button:hover {
+            background-color: #27ae60;
+        }
+        
+        .features-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            width: calc(33.33% - 20px);
+            margin-bottom: 30px;
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .feature-card h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        
+        .feature-card p {
+            margin-bottom: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .feature-card {
+                width: 100%;
+            }
+        }
+    </style>
+    
+    <!-- Required libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathbox@0.0.5/build/mathbox.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraph.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Math Visualization System</h1>
+            <p>Enter a mathematical problem or question to generate interactive visualizations</p>
+        </header>
+        
+        <div class="input-section">
+            <textarea id="problem-input" placeholder="Enter a math problem or question. For example: 'Graph the function f(x) = x^2 - 2x + 1 and identify its key features.'"></textarea>
+            <button id="process-button">Process</button>
+        </div>
+        
+        <div class="visualization-container">
+            <h2>Visualization</h2>
+            <div id="visualization-display" class="visualization-display"></div>
+        </div>
+        
+        <div class="result-section">
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="analysis">Analysis</button>
+                    <button class="tab-button" data-tab="code">Generated Code</button>
+                    <button class="tab-button" data-tab="education">Educational Content</button>
+                </div>
+                
+                <div id="analysis-tab" class="tab-content active">
+                    <h3>Mathematical Analysis</h3>
+                    <div id="analysis-content" class="code-block">
+                        Analysis results will appear here...
+                    </div>
+                </div>
+                
+                <div id="code-tab" class="tab-content">
+                    <h3>Generated Visualization Code</h3>
+                    <div id="code-content" class="code-block">
+                        Generated code will appear here...
+                    </div>
+                </div>
+                
+                <div id="education-tab" class="tab-content">
+                    <h3>Educational Content</h3>
+                    <div id="education-content" class="educational-content">
+                        Educational content will appear here...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <div class="feature-card">
+                <h3>Multiple Visualization Libraries</h3>
+                <p>Automatically selects the best visualization library for each problem type, including MathBox for 3D, Mafs for 2D functions, and JSXGraph for geometry.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Code Generation</h3>
+                <p>Generates reusable code that you can integrate into your own projects, with support for React components and vanilla JavaScript.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Educational Content</h3>
+                <p>Provides explanations and insights about mathematical concepts to enhance understanding and learning.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Interactive Elements</h3>
+                <p>Creates visualizations with interactive elements like sliders, draggable points, and dynamic updates to explore mathematical concepts.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Natural Language Processing</h3>
+                <p>Interprets mathematical problems expressed in natural language to extract key information and generate appropriate visualizations.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Calculus Operations</h3>
+                <p>Supports visualization of calculus concepts including derivatives, integrals, and limits with specialized displays.</p>
+            </div>
+        </div>
+        
+        <div class="example-list">
+            <h2>Examples</h2>
+            <button class="example-button" data-example="Graph the function f(x) = x^2 - 2x + 1 and identify its key features.">Quadratic Function</button>
+            <button class="example-button" data-example="Visualize the 3D function f(x,y) = sin(x) * cos(y) over the domain x in [-3,3] and y in [-3,3].">3D Surface</button>
+            <button class="example-button" data-example="Create a visualization of a triangle with vertices at (0,0), (4,0), and (2,3). Calculate its area and find the coordinates of its centroid.">Triangle Geometry</button>
+            <button class="example-button" data-example="Plot the function f(x) = sin(x) and its derivative f'(x) = cos(x) on the same graph.">Function and Derivative</button>
+            <button class="example-button" data-example="Show a vector field visualization of the gradient of f(x,y) = x^2 + y^2.">Vector Field</button>
+        </div>
+    </div>
+
+    <script>
+        // Simplified mock implementation of the Math-LLM library for demo purposes
+        const mockLibrary = {
+            // Process a math problem and return a solution
+            processMathProblem: async function(problem) {
+                console.log("Processing problem:", problem);
+                
+                // Mock analysis based on the problem
+                let analysis, selectedLibrary, code, educationalContent;
+                
+                if (problem.includes('3D') || problem.includes('surface') || problem.includes('f(x,y)')) {
+                    // 3D function case
+                    selectedLibrary = 'mathbox';
+                    analysis = {
+                        concept: {
+                            type: 'function3D',
+                            subtype: 'surface',
+                            expression: problem.includes('sin') ? 'Math.sin(x) * Math.cos(y)' : 'x*x + y*y',
+                            variables: ['x', 'y', 'z']
+                        },
+                        visualization: {
+                            recommendedLibrary: 'mathbox',
+                            dimensionality: '3D',
+                            complexity: 'intermediate',
+                            viewport: {
+                                x: [-3, 3],
+                                y: [-3, 3],
+                                z: [-3, 3]
+                            }
+                        },
+                        parameters: {
+                            domain: [-3, 3],
+                            range: [-3, 3],
+                            functions: [
+                                {
+                                    label: 'f',
+                                    expression: problem.includes('sin') ? 'Math.sin(x) * Math.cos(y)' : 'x*x + y*y',
+                                    color: '#3090FF'
+                                }
+                            ]
+                        }
+                    };
+                    
+                    code = `// MathBox 3D Function Visualization
+const container = document.getElementById('visualization-container');
+const mathbox = mathBox({
+  plugins: ['core', 'controls', 'cursor'],
+  controls: {
+    klass: THREE.OrbitControls
+  },
+  element: container
+});
+
+// Set the renderer background color
+mathbox.three.renderer.setClearColor(new THREE.Color('#FFFFFF'), 1.0);
+
+// Set up cartesian coordinates
+mathbox
+  .set({
+    scale: 720,
+    focus: 3
+  })
+  .cartesian({
+    range: [[-3, 3], [-3, 3], [-3, 3]],
+    scale: [1, 1, 1]
+  });
+
+// Add axes
+mathbox
+  .group()
+  .axis({ axis: 1, width: 2, color: 'black' })
+  .axis({ axis: 2, width: 2, color: 'black' })
+  .axis({ axis: 3, width: 2, color: 'black' });
+
+// Add grid
+mathbox
+  .group()
+  .grid({ width: 1, axes: [1, 2], color: '#777777' });
+
+// Add the 3D function surface
+mathbox
+  .group()
+  .area({
+    expr: function (emit, x, y, i, j) {
+      const z = Math.sin(x) * Math.cos(y);
+      emit(x, y, z);
+    },
+    width: 64,
+    height: 64,
+    axes: [1, 2, 3]
+  })
+  .surface({
+    color: '#3090FF',
+    shaded: true
+  });`;
+                    
+                } else if (problem.includes('triangle') || problem.includes('vertices') || problem.includes('geometry')) {
+                    // Geometry case
+                    selectedLibrary = 'jsxgraph';
+                    analysis = {
+                        concept: {
+                            type: 'geometry',
+                            subtype: 'triangle',
+                            variables: ['x', 'y']
+                        },
+                        visualization: {
+                            recommendedLibrary: 'jsxgraph',
+                            dimensionality: '2D',
+                            complexity: 'intermediate',
+                            viewport: {
+                                x: [-1, 5],
+                                y: [-1, 4],
+                                z: [-1, 1]
+                            }
+                        },
+                        parameters: {
+                            domain: [-1, 5],
+                            range: [-1, 4],
+                            points: [
+                                { label: 'A', coordinates: [0, 0], color: '#3090FF' },
+                                { label: 'B', coordinates: [4, 0], color: '#3090FF' },
+                                { label: 'C', coordinates: [2, 3], color: '#3090FF' }
+                            ]
+                        }
+                    };
+                    
+                    code = `// JSXGraph Geometry Visualization
+const board = JXG.JSXGraph.initBoard('visualization-container', {
+  boundingbox: [-1, 4, 5, -1],
+  axis: true,
+  grid: true
+});
+
+// Create points
+const A = board.create('point', [0, 0], {name: 'A', size: 4, color: '#3090FF'});
+const B = board.create('point', [4, 0], {name: 'B', size: 4, color: '#3090FF'});
+const C = board.create('point', [2, 3], {name: 'C', size: 4, color: '#3090FF'});
+
+// Create the triangle
+const triangle = board.create('polygon', [A, B, C], {
+  fillColor: 'lightblue',
+  fillOpacity: 0.3,
+  borders: {
+    strokeColor: 'blue',
+    strokeWidth: 2
+  }
+});
+
+// Calculate and display the centroid
+const centroid = board.create('point', [
+  function() { return (A.X() + B.X() + C.X()) / 3; },
+  function() { return (A.Y() + B.Y() + C.Y()) / 3; }
+], {name: 'Centroid', size: 4, color: 'red'});
+
+// Calculate the area
+const area = board.create('text', [0.5, 3.5, function() {
+  return 'Area: ' + (Math.abs((B.X()-A.X())*(C.Y()-A.Y()) - (C.X()-A.X())*(B.Y()-A.Y()))/2).toFixed(2);
+}], {fontSize: 15});`;
+                    
+                } else {
+                    // 2D function case (default)
+                    selectedLibrary = 'jsxgraph';
+                    let expression = 'x*x - 2*x + 1'; // Default
+                    
+                    // Extract expression from the problem if it exists
+                    const expressionMatch = problem.match(/f\(x\)\s*=\s*([^,;.]+)/);
+                    if (expressionMatch && expressionMatch[1]) {
+                        expression = expressionMatch[1].trim();
+                    }
+                    
+                    analysis = {
+                        concept: {
+                            type: 'function2D',
+                            subtype: 'polynomial',
+                            expression: expression,
+                            variables: ['x', 'y']
+                        },
+                        visualization: {
+                            recommendedLibrary: 'jsxgraph',
+                            dimensionality: '2D',
+                            complexity: 'basic',
+                            viewport: {
+                                x: [-5, 5],
+                                y: [-5, 5],
+                                z: [-1, 1]
+                            }
+                        },
+                        parameters: {
+                            domain: [-5, 5],
+                            range: [-5, 5],
+                            functions: [
+                                {
+                                    label: 'f',
+                                    expression: expression,
+                                    color: '#3090FF'
+                                }
+                            ]
+                        }
+                    };
+                    
+                    code = `// JSXGraph 2D Function Visualization
+const board = JXG.JSXGraph.initBoard('visualization-container', {
+  boundingbox: [-5, 5, 5, -5],
+  axis: true,
+  grid: true
+});
+
+// Define the function
+function f(x) {
+  return ${expression};
+}
+
+// Create the function graph
+const graph = board.create('functiongraph', [f, -5, 5], {
+  strokeColor: '#3090FF',
+  strokeWidth: 2
+});
+
+// Add a movable point on the x-axis
+const xPoint = board.create('glider', [0, 0, board.defaultAxes.x], {
+  name: 'x',
+  size: 5,
+  color: 'blue'
+});
+
+// Add a point on the function that moves with the x-point
+const fnPoint = board.create('point', [
+  function() { return xPoint.X(); },
+  function() { return f(xPoint.X()); }
+], {
+  name: 'f(x)',
+  size: 5,
+  color: '#3090FF'
+});
+
+// Add a line segment connecting the points
+board.create('line', [xPoint, fnPoint], {
+  straightFirst: false,
+  straightLast: false,
+  strokeColor: 'black',
+  strokeWidth: 1,
+  dash: 2
+});
+
+// Show the function value at the current x
+board.create('text', [
+  function() { return xPoint.X() + 0.5; },
+  function() { return f(xPoint.X()) + 0.5; },
+  function() { return 'f(' + xPoint.X().toFixed(2) + ') = ' + f(xPoint.X()).toFixed(2); }
+], {fontSize: 16});`;
+                }
+                
+                // Create educational content based on the analysis
+                educationalContent = {
+                    title: `Exploring ${analysis.concept.type === 'function2D' ? '2D Function' : 
+                             analysis.concept.type === 'function3D' ? '3D Function' : 'Geometric'} Visualization`,
+                    summary: `This visualization explores the ${analysis.concept.type} concept, providing an interactive way to understand its properties and behavior.`,
+                    keyPoints: [
+                        'Visualizations help build intuition for mathematical concepts',
+                        'Interactive elements allow exploration of different parameters',
+                        'Understanding the visual representation enhances analytical understanding'
+                    ],
+                    detailedExplanation: 'Mathematical visualizations provide a concrete way to explore abstract concepts. By interacting with the visualization, you can develop a deeper understanding of the underlying mathematical principles and relationships.'
+                };
+                
+                // Simulate some processing delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                return {
+                    analysis,
+                    selectedLibrary,
+                    visualizationCode: { code },
+                    educationalContent
+                };
+            },
+            
+            // Render a visualization based on options
+            renderVisualization: function(options) {
+                console.log("Rendering visualization with options:", options);
+                
+                const container = document.createElement('div');
+                container.id = 'visualization-container';
+                container.style.width = '100%';
+                container.style.height = '100%';
+                
+                // Render based on the library
+                if (options.library === 'mathbox' || options.type === 'function3D') {
+                    renderMathBoxVisualization(container, options);
+                } else if (options.library === 'jsxgraph' || options.type === 'geometry') {
+                    renderJSXGraphVisualization(container, options);
+                } else {
+                    // Fallback to JSXGraph for any 2D functions
+                    renderJSXGraphVisualization(container, options);
+                }
+                
+                return container;
+            }
+        };
+        
+        // Function to render a MathBox visualization
+        function renderMathBoxVisualization(container, options) {
+            // Create mathbox instance
+            const mathbox = window.mathBox({
+                plugins: ['core', 'controls', 'cursor'],
+                controls: {
+                    klass: window.THREE.OrbitControls
+                },
+                element: container
+            });
+            
+            // Set renderer properties
+            mathbox.three.renderer.setClearColor(new THREE.Color('#FFFFFF'), 1.0);
+            
+            // Set up cartesian coordinates
+            mathbox
+              .set({
+                scale: 500,
+                focus: 3
+              })
+              .cartesian({
+                range: [options.domain || [-3, 3], options.range || [-3, 3], options.zRange || [-3, 3]],
+                scale: [1, 1, 1]
+              });
+            
+            // Add axes
+            mathbox
+              .group()
+              .axis({
+                axis: 1,
+                width: 2,
+                color: 'black'
+              })
+              .axis({
+                axis: 2,
+                width: 2,
+                color: 'black'
+              })
+              .axis({
+                axis: 3,
+                width: 2,
+                color: 'black'
+              });
+            
+            // Add grid
+            mathbox
+              .group()
+              .grid({
+                width: 1,
+                divideX: 20,
+                divideY: 20,
+                axes: [1, 2],
+                color: '#777777'
+              });
+            
+            // Add the 3D function surface
+            mathbox
+              .group()
+              .area({
+                expr: function (emit, x, y, i, j) {
+                  let z;
+                  try {
+                    // Parse the expression if it's provided
+                    const expr = options.expression || 'Math.sin(x) * Math.cos(y)';
+                    // Create a function from the expression and evaluate it
+                    const fn = new Function('x', 'y', `return ${expr};`);
+                    z = fn(x, y);
+                  } catch (e) {
+                    console.error('Error evaluating expression:', e);
+                    z = Math.sin(x) * Math.cos(y); // Fallback
+                  }
+                  emit(x, y, z);
+                },
+                width: 64,
+                height: 64,
+                axes: [1, 2, 3]
+              })
+              .surface({
+                color: '#3090FF',
+                shaded: true
+              });
+        }
+        
+        // Function to render a JSXGraph visualization
+        function renderJSXGraphVisualization(container, options) {
+            // Create a unique ID for the JSXGraph container
+            const id = 'jsxgraph-' + Math.random().toString(36).substring(2, 9);
+            container.id = id;
+            
+            // Create the JSXGraph board
+            const board = JXG.JSXGraph.initBoard(id, {
+                boundingbox: [
+                    options.domain ? options.domain[0] : -5,
+                    options.range ? options.range[1] : 5,
+                    options.domain ? options.domain[1] : 5,
+                    options.range ? options.range[0] : -5
+                ],
+                axis: true,
+                grid: true,
+                showCopyright: false,
+                showNavigation: true,
+                keepAspectRatio: true
+            });
+            
+            // Determine what type of visualization to create
+            if (options.type === 'geometry' && options.points && options.points.length > 0) {
+                // Create a geometry visualization with points
+                const points = [];
+                
+                options.points.forEach(pointData => {
+                    const point = board.create('point', pointData.coordinates, {
+                        name: pointData.label,
+                        size: 4,
+                        color: pointData.color || '#3090FF',
+                        withLabel: true,
+                        label: { offset: [5, 5] }
+                    });
+                    points.push(point);
+                });
+                
+                // If we have 3 points, create a triangle
+                if (points.length === 3) {
+                    board.create('polygon', points, {
+                        fillColor: 'lightblue',
+                        fillOpacity: 0.3,
+                        borders: { strokeColor: 'blue', strokeWidth: 2 }
+                    });
+                    
+                    // Add the centroid
+                    board.create('point', [
+                        function() { return (points[0].X() + points[1].X() + points[2].X()) / 3; },
+                        function() { return (points[0].Y() + points[1].Y() + points[2].Y()) / 3; }
+                    ], { name: 'Centroid', size: 4, color: 'red' });
+                }
+                
+            } else {
+                // Create a function visualization
+                try {
+                    // Parse the expression to create a function
+                    const parseExpression = function(expr) {
+                        // Replace common math functions with Math.* equivalents
+                        let preparedExpression = expr
+                            .replace(/sin\(/g, 'Math.sin(')
+                            .replace(/cos\(/g, 'Math.cos(')
+                            .replace(/tan\(/g, 'Math.tan(')
+                            .replace(/exp\(/g, 'Math.exp(')
+                            .replace(/log\(/g, 'Math.log(')
+                            .replace(/sqrt\(/g, 'Math.sqrt(')
+                            .replace(/pow\(/g, 'Math.pow(')
+                            .replace(/abs\(/g, 'Math.abs(')
+                            .replace(/\^/g, '**'); // Convert caret operator to JS exponentiation
+                            
+                        // Replace patterns like 7x with 7*x
+                        preparedExpression = preparedExpression.replace(/([0-9])([a-zA-Z])/g, '$1*$2');
+                        
+                        // Handle implicit multiplication without spaces: (x+1)(x-1) -> (x+1)*(x-1)
+                        preparedExpression = preparedExpression.replace(/\)\(/g, ')*(');
+                        
+                        // Handle coefficient multiplication with parentheses: 3(x+1) -> 3*(x+1)
+                        preparedExpression = preparedExpression.replace(/([0-9])\(/g, '$1*(');
+                        
+                        return preparedExpression;
+                    };
+                    
+                    // Create the function graph
+                    const fn = function(x) {
+                        try {
+                            // Handle different expression sources and formats
+                            const expressionToEval = options.expression ? parseExpression(options.expression) : 'x*x - 2*x + 1';
+                            
+                            // Convert the expression to a function and evaluate it
+                            const evalFn = new Function('x', `return ${expressionToEval};`);
+                            return evalFn(x);
+                        } catch (e) {
+                            console.error('Error evaluating function:', e);
+                            return x*x; // Fallback to x^2
+                        }
+                    };
+                    
+                    board.create('functiongraph', [
+                        fn,
+                        options.domain ? options.domain[0] : -5,
+                        options.domain ? options.domain[1] : 5
+                    ], {
+                        strokeColor: '#3090FF',
+                        strokeWidth: 2
+                    });
+                    
+                    // Add a movable point on the x-axis
+                    const xPoint = board.create('glider', [0, 0, board.defaultAxes.x], {
+                        name: 'x',
+                        size: 5,
+                        color: 'blue'
+                    });
+                    
+                    // Add a point on the function that moves with the x-point
+                    const fnPoint = board.create('point', [
+                        function() { return xPoint.X(); },
+                        function() { return fn(xPoint.X()); }
+                    ], {
+                        name: 'f(x)',
+                        size: 5,
+                        color: '#3090FF'
+                    });
+                    
+                    // Add a line segment connecting the points
+                    board.create('line', [xPoint, fnPoint], {
+                        straightFirst: false,
+                        straightLast: false,
+                        strokeColor: 'black',
+                        strokeWidth: 1,
+                        dash: 2
+                    });
+                    
+                    // Show the function value at the current x
+                    board.create('text', [
+                        function() { return xPoint.X() + 0.5; },
+                        function() { return fn(xPoint.X()) + 0.5; },
+                        function() { return 'f(' + xPoint.X().toFixed(2) + ') = ' + fn(xPoint.X()).toFixed(2); }
+                    ], {fontSize: 16});
+                    
+                } catch (error) {
+                    console.error('Error creating JSXGraph visualization:', error);
+                    
+                    // Show error message on the board
+                    board.create('text', [0, 0, 'Error: ' + error.message], {
+                        fontSize: 14,
+                        anchorX: 'middle',
+                        anchorY: 'middle',
+                        color: 'red'
+                    });
+                }
+            }
+        }
+        
+        // Handle tab switching
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and content
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                document.getElementById(button.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+        
+        // Handle example buttons
+        document.querySelectorAll('.example-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.getElementById('problem-input').value = button.dataset.example;
+                document.getElementById('process-button').click();
+            });
+        });
+        
+        // Handle process button
+        document.getElementById('process-button').addEventListener('click', async () => {
+            const problem = document.getElementById('problem-input').value;
+            
+            if (!problem.trim()) {
+                alert('Please enter a math problem or question.');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('visualization-display').innerHTML = '<div style="text-align: center; padding-top: 180px;">Processing...</div>';
+            document.getElementById('analysis-content').textContent = 'Analyzing...';
+            document.getElementById('code-content').textContent = 'Generating code...';
+            document.getElementById('education-content').innerHTML = 'Creating educational content...';
+            
+            try {
+                // Process the problem using our mock library
+                const solution = await mockLibrary.processMathProblem(problem);
+                
+                // Update the visualization
+                document.getElementById('visualization-display').innerHTML = '';
+                const visualization = mockLibrary.renderVisualization({
+                    type: solution.analysis.concept.type,
+                    library: solution.selectedLibrary,
+                    expression: solution.analysis.concept.expression,
+                    domain: solution.analysis.parameters.domain,
+                    range: solution.analysis.parameters.range,
+                    zRange: solution.analysis.visualization.viewport.z,
+                    points: solution.analysis.parameters.points
+                });
+                document.getElementById('visualization-display').appendChild(visualization);
+                
+                // Update the analysis tab
+                document.getElementById('analysis-content').textContent = JSON.stringify(solution.analysis, null, 2);
+                
+                // Update the code tab
+                document.getElementById('code-content').textContent = solution.visualizationCode.code;
+                
+                // Update the educational content tab
+                const educationHtml = `
+                    <h4>${solution.educationalContent.title}</h4>
+                    <p>${solution.educationalContent.summary}</p>
+                    <p>${solution.educationalContent.detailedExplanation}</p>
+                    <h4>Key Points:</h4>
+                    <ul>
+                        ${solution.educationalContent.keyPoints.map(point => `<li>${point}</li>`).join('')}
+                    </ul>
+                `;
+                document.getElementById('education-content').innerHTML = educationHtml;
+                
+            } catch (error) {
+                console.error('Error processing problem:', error);
+                document.getElementById('visualization-display').innerHTML = '<div style="text-align: center; padding-top: 180px; color: red;">Error: ' + error.message + '</div>';
+            }
+        });
+    </script>
+</body>
+</html>

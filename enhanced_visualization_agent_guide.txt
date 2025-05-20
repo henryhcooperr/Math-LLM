@@ -1,0 +1,1976 @@
+# Enhanced Visualization Agent Guide: Math-LLM System
+
+This guide defines the architecture and implementation details for the intelligent visualization agent that powers the Math-LLM system, enabling advanced mathematical concept interpretation, visualization selection, and educational content generation.
+
+## Agent Architecture
+
+The Enhanced Visualization Agent operates as an intelligent middleware between the user's mathematical query and the visualization system. It combines multiple specialized modules to deliver optimal results.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  ENHANCED VISUALIZATION AGENT                   │
+│                                                                 │
+│  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    │
+│  │               │    │               │    │               │    │
+│  │   Concept     │───▶│  Visualization│───▶│  Educational  │    │
+│  │   Analyzer    │    │   Generator   │    │  Synthesizer  │    │
+│  │               │    │               │    │               │    │
+│  └───────┬───────┘    └───────┬───────┘    └───────┬───────┘    │
+│          │                    │                    │            │
+│          ▼                    ▼                    ▼            │
+│  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    │
+│  │               │    │               │    │               │    │
+│  │  Mathematical │    │   Library     │    │  Content      │    │
+│  │  Knowledge    │    │   Selector    │    │  Adaptor      │    │
+│  │  Base         │    │               │    │               │    │
+│  └───────────────┘    └───────────────┘    └───────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     VISUALIZATION SYSTEM                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Key Components
+
+### 1. Concept Analyzer
+
+The Concept Analyzer interprets mathematical queries and extracts mathematical concepts, entities, relationships, and requirements.
+
+#### Implementation Details
+
+```javascript
+class ConceptAnalyzer {
+  constructor(options = {}) {
+    this.options = options;
+    this.mathKnowledgeBase = new MathematicalKnowledgeBase();
+    
+    // Initialize NLP processing capabilities
+    this.nlpProcessor = new NLPProcessor({
+      entityExtraction: true,
+      intentRecognition: true,
+      keywordExtraction: true
+    });
+    
+    // Initialize expression parser
+    this.expressionParser = new ExpressionParser();
+    
+    // Initialize concept classification models
+    this.loadConceptClassifier();
+  }
+  
+  async loadConceptClassifier() {
+    this.conceptClassifier = await MathConceptClassifier.load();
+  }
+  
+  async analyzeProblem(problem) {
+    // Extract raw NLP features
+    const nlpFeatures = await this.nlpProcessor.process(problem);
+    
+    // Extract mathematical expressions
+    const expressions = this.expressionParser.extractExpressions(problem);
+    
+    // Identify mathematical concepts
+    const conceptCandidates = await this.identifyConcepts(problem, nlpFeatures, expressions);
+    
+    // Rank concepts by relevance
+    const rankedConcepts = this.rankConceptsByRelevance(conceptCandidates, nlpFeatures);
+    
+    // Select primary concept
+    const primaryConcept = rankedConcepts[0];
+    
+    // Extract necessary parameters
+    const parameters = this.extractParameters(primaryConcept, problem, nlpFeatures, expressions);
+    
+    // Determine visualization requirements
+    const visualizationRequirements = this.determineVisualizationRequirements(
+      primaryConcept,
+      parameters,
+      nlpFeatures
+    );
+    
+    // Return complete analysis
+    return {
+      query: problem,
+      concept: {
+        type: primaryConcept.type,
+        subtype: primaryConcept.subtype,
+        expression: primaryConcept.expression,
+        variables: primaryConcept.variables
+      },
+      relatedConcepts: rankedConcepts.slice(1).map(c => c.type),
+      parameters: parameters,
+      visualization: visualizationRequirements,
+      educationalLevel: this.determineEducationalLevel(nlpFeatures, primaryConcept)
+    };
+  }
+  
+  async identifyConcepts(problem, nlpFeatures, expressions) {
+    // Use concept classifier
+    const conceptPredictions = await this.conceptClassifier.predict(problem);
+    
+    // Enrich with knowledge base information
+    return conceptPredictions.map(prediction => {
+      const conceptInfo = this.mathKnowledgeBase.getConceptInfo(prediction.concept);
+      return {
+        type: prediction.concept,
+        subtype: prediction.subtype,
+        expression: this.findPrimaryExpression(expressions, prediction.concept),
+        confidence: prediction.confidence,
+        variables: this.extractVariables(expressions),
+        ...conceptInfo
+      };
+    });
+  }
+  
+  findPrimaryExpression(expressions, conceptType) {
+    // Logic to match expressions to concept types
+    if (expressions.length === 0) {
+      return null;
+    }
+    
+    if (conceptType === 'function2D' && expressions.length > 0) {
+      // Find expression that matches f(x) = ... pattern
+      const functionExpr = expressions.find(expr => /f\s*\(\s*x\s*\)\s*=/.test(expr));
+      if (functionExpr) {
+        // Extract right side of the equation
+        const match = functionExpr.match(/f\s*\(\s*x\s*\)\s*=\s*(.*)/);
+        return match ? match[1].trim() : functionExpr;
+      }
+      
+      // If no f(x) = ... pattern, look for y = ... pattern
+      const yExpr = expressions.find(expr => /y\s*=/.test(expr));
+      if (yExpr) {
+        const match = yExpr.match(/y\s*=\s*(.*)/);
+        return match ? match[1].trim() : yExpr;
+      }
+      
+      // Otherwise return the first expression
+      return expressions[0];
+    }
+    
+    // Logic for other concept types
+    return expressions[0] || null;
+  }
+  
+  extractVariables(expressions) {
+    // Extract variables from expressions
+    const variableRegex = /([a-zA-Z])\b(?!\()/g;
+    const variables = new Set();
+    
+    expressions.forEach(expr => {
+      const matches = expr.match(variableRegex);
+      if (matches) {
+        matches.forEach(variable => variables.add(variable));
+      }
+    });
+    
+    return Array.from(variables);
+  }
+  
+  extractParameters(concept, problem, nlpFeatures, expressions) {
+    const parameters = {
+      domain: this.extractDomain(problem, concept),
+      range: this.extractRange(problem, concept)
+    };
+    
+    // Add concept-specific parameters
+    switch (concept.type) {
+      case 'function2D':
+        parameters.functions = this.extractFunctions(concept, expressions);
+        break;
+      case 'function3D':
+        parameters.functions = this.extractFunctions(concept, expressions);
+        parameters.zRange = this.extractZRange(problem, concept);
+        break;
+      case 'geometry':
+        parameters.points = this.extractPoints(problem, concept);
+        parameters.shapes = this.extractShapes(problem, concept);
+        break;
+      case 'calculus':
+        parameters.functions = this.extractFunctions(concept, expressions);
+        parameters.calculusOperations = this.extractCalculusOperations(problem, concept);
+        break;
+      case 'linearAlgebra':
+        parameters.matrices = this.extractMatrices(problem, concept);
+        parameters.vectors = this.extractVectors(problem, concept);
+        break;
+    }
+    
+    return parameters;
+  }
+  
+  extractDomain(problem, concept) {
+    // Default domain
+    let domain = [-10, 10];
+    
+    // Try to extract domain from problem text
+    const domainRegex = /domain\s*(?:of|is|:|\s)\s*(?:\[|\()?\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:\]|\))?/i;
+    const xRangeRegex = /x\s*(?:is in|in|∈|belongs to|ranges from|varies from|goes from|from|:)\s*(?:\[|\()?\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:\]|\))?/i;
+    
+    const domainMatch = problem.match(domainRegex) || problem.match(xRangeRegex);
+    if (domainMatch) {
+      const start = parseFloat(domainMatch[1]);
+      const end = parseFloat(domainMatch[2]);
+      if (!isNaN(start) && !isNaN(end)) {
+        domain = [start, end];
+      }
+    }
+    
+    return domain;
+  }
+  
+  extractRange(problem, concept) {
+    // Default range (y-values)
+    let range = [-10, 10];
+    
+    // Try to extract range from problem text
+    const rangeRegex = /range\s*(?:of|is|:|\s)\s*(?:\[|\()?\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:\]|\))?/i;
+    const yRangeRegex = /y\s*(?:is in|in|∈|belongs to|ranges from|varies from|goes from|from|:)\s*(?:\[|\()?\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:\]|\))?/i;
+    
+    const rangeMatch = problem.match(rangeRegex) || problem.match(yRangeRegex);
+    if (rangeMatch) {
+      const start = parseFloat(rangeMatch[1]);
+      const end = parseFloat(rangeMatch[2]);
+      if (!isNaN(start) && !isNaN(end)) {
+        range = [start, end];
+      }
+    }
+    
+    return range;
+  }
+  
+  extractZRange(problem, concept) {
+    // Default z-range
+    let zRange = [-10, 10];
+    
+    // Try to extract z-range from problem text
+    const zRangeRegex = /z\s*(?:is in|in|∈|belongs to|ranges from|varies from|goes from|from|:)\s*(?:\[|\()?\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:\]|\))?/i;
+    
+    const zRangeMatch = problem.match(zRangeRegex);
+    if (zRangeMatch) {
+      const start = parseFloat(zRangeMatch[1]);
+      const end = parseFloat(zRangeMatch[2]);
+      if (!isNaN(start) && !isNaN(end)) {
+        zRange = [start, end];
+      }
+    }
+    
+    return zRange;
+  }
+  
+  extractFunctions(concept, expressions) {
+    if (!expressions || expressions.length === 0) {
+      return [{
+        label: 'f',
+        expression: concept.expression || 'x',
+        color: '#3090FF'
+      }];
+    }
+    
+    // Extract function expressions
+    return expressions.map((expr, index) => {
+      let functionLabel = 'f';
+      let expression = expr;
+      
+      // Try to extract label and expression
+      const labelMatch = expr.match(/([a-zA-Z])\s*\(\s*x\s*\)\s*=\s*(.*)/);
+      if (labelMatch) {
+        functionLabel = labelMatch[1];
+        expression = labelMatch[2].trim();
+      }
+      
+      return {
+        label: functionLabel + (index > 0 ? index : ''),
+        expression: expression,
+        color: this.getColorForIndex(index)
+      };
+    });
+  }
+  
+  getColorForIndex(index) {
+    const colors = [
+      '#3090FF', // Blue
+      '#FF9030', // Orange
+      '#30FF90', // Green
+      '#FF3090', // Pink
+      '#9030FF', // Purple
+      '#FF3030'  // Red
+    ];
+    
+    return colors[index % colors.length];
+  }
+  
+  extractPoints(problem, concept) {
+    const points = [];
+    
+    // Try to extract points from problem text
+    const pointRegex = /\((-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*(?:,\s*(-?\d+\.?\d*))?\)/g;
+    
+    let match;
+    let index = 0;
+    while ((match = pointRegex.exec(problem)) !== null) {
+      const x = parseFloat(match[1]);
+      const y = parseFloat(match[2]);
+      const z = match[3] ? parseFloat(match[3]) : undefined;
+      
+      if (!isNaN(x) && !isNaN(y)) {
+        // Labeled point
+        const pointLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'P', 'Q', 'R'];
+        const point = {
+          label: pointLabels[index % pointLabels.length],
+          coordinates: z !== undefined ? [x, y, z] : [x, y],
+          color: this.getColorForIndex(index)
+        };
+        
+        points.push(point);
+        index++;
+      }
+    }
+    
+    return points;
+  }
+  
+  determineVisualizationRequirements(concept, parameters, nlpFeatures) {
+    // Determine visualization requirements based on concept and query
+    const interactiveKeywords = ['interactive', 'animate', 'explore', 'manipulate', 'slider', 'adjust'];
+    const eduKeywords = ['explain', 'understand', 'learn', 'teach', 'educational', 'step-by-step'];
+    
+    // Check if query contains interactive or educational keywords
+    const isInteractiveRequested = interactiveKeywords.some(keyword => 
+      nlpFeatures.keywords.includes(keyword)
+    );
+    
+    const isEducationalRequested = eduKeywords.some(keyword => 
+      nlpFeatures.keywords.includes(keyword)
+    );
+    
+    // Determine dimensionality
+    let dimensionality = '2D';
+    if (concept.type === 'function3D' || 
+        (concept.type === 'vectorField' && concept.variables.length > 2) ||
+        (parameters.points && parameters.points.some(p => p.coordinates.length > 2))) {
+      dimensionality = '3D';
+    }
+    
+    // Determine complexity level
+    let complexity = 'basic';
+    if (concept.subtype && concept.subtype.includes('advanced')) {
+      complexity = 'advanced';
+    } else if (isInteractiveRequested || isEducationalRequested) {
+      complexity = 'intermediate';
+    }
+    
+    // Recommend library based on concept and dimensionality
+    const recommendedLibrary = this.recommendLibrary(concept.type, dimensionality, complexity);
+    
+    // Determine viewport
+    const viewport = {
+      x: parameters.domain,
+      y: parameters.range,
+      z: parameters.zRange || [-10, 10]
+    };
+    
+    return {
+      recommendedLibrary,
+      dimensionality,
+      complexity,
+      interactivity: isInteractiveRequested ? 'high' : 'medium',
+      educationalContent: isEducationalRequested ? 'detailed' : 'standard',
+      viewport
+    };
+  }
+  
+  recommendLibrary(conceptType, dimensionality, complexity) {
+    // Logic to select the optimal library for the visualization
+    if (dimensionality === '3D') {
+      if (complexity === 'advanced') {
+        return 'mathbox';
+      } else {
+        return 'mathbox';
+      }
+    } else {
+      if (conceptType === 'geometry') {
+        return 'jsxgraph';
+      } else if (conceptType === 'function2D') {
+        return 'mafs';
+      } else if (conceptType === 'data') {
+        return 'd3';
+      } else {
+        return 'jsxgraph';
+      }
+    }
+  }
+  
+  determineEducationalLevel(nlpFeatures, concept) {
+    // Determine the educational level based on the query and concept
+    const basicConcepts = ['basic_arithmetic', 'simple_functions', 'basic_geometry'];
+    const intermediateConcepts = ['algebra', 'trigonometry', 'basic_calculus'];
+    const advancedConcepts = ['advanced_calculus', 'linear_algebra', 'differential_equations'];
+    
+    if (advancedConcepts.includes(concept.type)) {
+      return 'advanced';
+    } else if (intermediateConcepts.includes(concept.type)) {
+      return 'intermediate';
+    } else {
+      return 'beginner';
+    }
+  }
+}
+```
+
+### 2. Mathematical Knowledge Base
+
+The Mathematical Knowledge Base provides structured information about mathematical concepts, their relationships, properties, and visualization requirements.
+
+#### Implementation Details
+
+```javascript
+class MathematicalKnowledgeBase {
+  constructor() {
+    this.concepts = {};
+    this.relationships = [];
+    
+    // Initialize with core concepts
+    this.loadConceptData();
+  }
+  
+  loadConceptData() {
+    // Load concept data from JSON or embedded definitions
+    this.concepts = {
+      'function2D': {
+        name: '2D Function',
+        description: 'A mathematical relationship between two variables',
+        subtypes: ['polynomial', 'trigonometric', 'exponential', 'logarithmic', 'rational'],
+        visualizationTypes: ['plot', 'curve'],
+        relatedConcepts: ['derivative', 'integral', 'limit', 'zero', 'extrema']
+      },
+      'function3D': {
+        name: '3D Function',
+        description: 'A function that maps two variables to one variable',
+        subtypes: ['surface', 'parametric'],
+        visualizationTypes: ['surface', 'contour', 'heatmap'],
+        relatedConcepts: ['partial_derivative', 'gradient', 'level_curve']
+      },
+      'geometry': {
+        name: 'Geometry',
+        description: 'The study of shapes, sizes, and properties of space',
+        subtypes: ['euclidean', 'analytic', 'differential'],
+        visualizationTypes: ['shapes', 'construction'],
+        relatedConcepts: ['point', 'line', 'polygon', 'circle', 'transformation']
+      },
+      'calculus': {
+        name: 'Calculus',
+        description: 'The mathematical study of continuous change',
+        subtypes: ['differential', 'integral', 'multivariable'],
+        visualizationTypes: ['derivative', 'integral', 'limit'],
+        relatedConcepts: ['function', 'rate_of_change', 'accumulation', 'sequence']
+      },
+      'linearAlgebra': {
+        name: 'Linear Algebra',
+        description: 'The branch of mathematics concerning linear equations, vectors, and matrices',
+        subtypes: ['matrix', 'vector_space', 'transformation'],
+        visualizationTypes: ['vector', 'matrix', 'transformation'],
+        relatedConcepts: ['vector', 'matrix', 'eigenvalue', 'determinant', 'system_of_equations']
+      },
+      'statistics': {
+        name: 'Statistics',
+        description: 'The study of collection, analysis, interpretation, and presentation of data',
+        subtypes: ['descriptive', 'inferential', 'probability'],
+        visualizationTypes: ['histogram', 'scatter', 'distribution'],
+        relatedConcepts: ['mean', 'variance', 'distribution', 'hypothesis_test', 'regression']
+      },
+      'differentialEquation': {
+        name: 'Differential Equation',
+        description: 'An equation involving derivatives of a function',
+        subtypes: ['ordinary', 'partial', 'linear', 'nonlinear'],
+        visualizationTypes: ['slope_field', 'solution_curve', 'phase_portrait'],
+        relatedConcepts: ['derivative', 'integral', 'function', 'initial_value_problem']
+      }
+    };
+    
+    // Define relationships between concepts
+    this.relationships = [
+      { source: 'function2D', target: 'calculus', type: 'is_studied_in' },
+      { source: 'derivative', target: 'function2D', type: 'applies_to' },
+      { source: 'integral', target: 'function2D', type: 'applies_to' },
+      { source: 'limit', target: 'function2D', type: 'applies_to' },
+      { source: 'function3D', target: 'multivariable_calculus', type: 'is_studied_in' },
+      { source: 'geometry', target: 'linearAlgebra', type: 'relates_to' }
+    ];
+  }
+  
+  getConceptInfo(conceptType) {
+    return this.concepts[conceptType] || null;
+  }
+  
+  getRelatedConcepts(conceptType) {
+    const concept = this.getConceptInfo(conceptType);
+    return concept ? concept.relatedConcepts : [];
+  }
+  
+  getVisualizationTypes(conceptType) {
+    const concept = this.getConceptInfo(conceptType);
+    return concept ? concept.visualizationTypes : [];
+  }
+  
+  getSubtypes(conceptType) {
+    const concept = this.getConceptInfo(conceptType);
+    return concept ? concept.subtypes : [];
+  }
+  
+  getVisualRepresentations(conceptType, subtype = null) {
+    // Return recommended visual representations for a concept
+    const conceptInfo = this.getConceptInfo(conceptType);
+    if (!conceptInfo) return [];
+    
+    // Base representation types
+    let representations = [];
+    
+    // Add concept-specific representations
+    switch (conceptType) {
+      case 'function2D':
+        representations = [
+          { type: 'curve', priority: 'high' },
+          { type: 'points', priority: 'medium' },
+          { type: 'table', priority: 'low' }
+        ];
+        break;
+      case 'function3D':
+        representations = [
+          { type: 'surface', priority: 'high' },
+          { type: 'contour', priority: 'medium' },
+          { type: 'parametric', priority: 'medium' }
+        ];
+        break;
+      case 'geometry':
+        representations = [
+          { type: 'diagram', priority: 'high' },
+          { type: 'interactive', priority: 'high' },
+          { type: 'coordinate', priority: 'medium' }
+        ];
+        break;
+      case 'calculus':
+        representations = [
+          { type: 'derivative', priority: 'high' },
+          { type: 'integral', priority: 'high' },
+          { type: 'limit', priority: 'medium' }
+        ];
+        break;
+      case 'linearAlgebra':
+        representations = [
+          { type: 'vector', priority: 'high' },
+          { type: 'transformation', priority: 'high' },
+          { type: 'matrix', priority: 'medium' }
+        ];
+        break;
+    }
+    
+    // Add subtype-specific representations
+    if (subtype && conceptInfo.subtypes.includes(subtype)) {
+      switch (subtype) {
+        case 'polynomial':
+          representations.push({ type: 'roots', priority: 'high' });
+          representations.push({ type: 'factor', priority: 'medium' });
+          break;
+        case 'trigonometric':
+          representations.push({ type: 'unit_circle', priority: 'high' });
+          representations.push({ type: 'periodicity', priority: 'high' });
+          break;
+        case 'parametric':
+          representations.push({ type: 'animation', priority: 'high' });
+          break;
+      }
+    }
+    
+    return representations;
+  }
+}
+```
+
+### 3. Visualization Generator
+
+The Visualization Generator creates interactive, educational mathematical visualizations based on the analyzed concepts.
+
+#### Implementation Details
+
+```javascript
+class VisualizationGenerator {
+  constructor(options = {}) {
+    this.options = options;
+    
+    // Load the template registry for code generation
+    this.templateRegistry = new VisualizationTemplateRegistry();
+    
+    // Initialize library-specific generators
+    this.generators = {
+      'mafs': new MafsGenerator(),
+      'mathbox': new MathBoxGenerator(),
+      'jsxgraph': new JSXGraphGenerator(),
+      'd3': new D3Generator(),
+      'threejs': new ThreeJSGenerator()
+    };
+  }
+  
+  generateVisualization(analysis, selectedLibrary) {
+    // Validate input
+    if (!analysis || !analysis.concept || !selectedLibrary) {
+      throw new Error('Invalid input for visualization generation');
+    }
+    
+    // Extract key information for generation
+    const { concept, parameters, visualization } = analysis;
+    
+    // Select template based on concept type and library
+    const template = this.selectTemplate(concept.type, concept.subtype, selectedLibrary);
+    
+    // Generate code using the selected template
+    const code = this.generateCode(template, concept, parameters, selectedLibrary);
+    
+    // Generate a preview image if needed
+    const previewImage = this.generatePreviewImage(selectedLibrary, concept, parameters);
+    
+    // Return the complete visualization package
+    return {
+      code,
+      previewImage,
+      library: selectedLibrary,
+      libraryVersion: this.getLibraryVersion(selectedLibrary),
+      dependencies: this.getDependencies(selectedLibrary),
+      concept: concept.type,
+      parameters
+    };
+  }
+  
+  selectTemplate(conceptType, conceptSubtype, library) {
+    // Get available templates for this concept type and library
+    const templates = this.templateRegistry.getTemplates(conceptType, library);
+    
+    // If no templates found, throw error
+    if (!templates || templates.length === 0) {
+      throw new Error(`No templates found for concept ${conceptType} with library ${library}`);
+    }
+    
+    // If subtype is specified, try to find a matching template
+    if (conceptSubtype) {
+      const subtypeTemplate = templates.find(t => t.subtype === conceptSubtype);
+      if (subtypeTemplate) {
+        return subtypeTemplate;
+      }
+    }
+    
+    // Otherwise return the first (default) template
+    return templates[0];
+  }
+  
+  generateCode(template, concept, parameters, library) {
+    // Get the appropriate generator for the selected library
+    const generator = this.generators[library];
+    if (!generator) {
+      throw new Error(`No generator found for library ${library}`);
+    }
+    
+    // Generate code using the generator
+    const code = generator.generate(template, concept, parameters);
+    
+    // Return the generated code wrapped with library-specific imports
+    return {
+      code,
+      language: generator.getLanguage(),
+      imports: generator.getImports(concept.type)
+    };
+  }
+  
+  generatePreviewImage(library, concept, parameters) {
+    // This would generate a preview image or SVG of the visualization
+    // In a real implementation, this might use a headless browser or rendering service
+    return {
+      type: 'svg',
+      url: null,
+      data: '<svg>Preview not available</svg>'
+    };
+  }
+  
+  getLibraryVersion(library) {
+    const versions = {
+      'mafs': '0.15.2',
+      'mathbox': '0.0.5',
+      'jsxgraph': '1.4.6',
+      'd3': '7.8.4',
+      'threejs': '0.150.1'
+    };
+    
+    return versions[library] || 'latest';
+  }
+  
+  getDependencies(library) {
+    const dependencies = {
+      'mafs': ['mafs', 'react', 'react-dom'],
+      'mathbox': ['mathbox', 'three'],
+      'jsxgraph': ['jsxgraph'],
+      'd3': ['d3'],
+      'threejs': ['three']
+    };
+    
+    return dependencies[library] || [];
+  }
+}
+
+// Example of a specific generator implementation
+class JSXGraphGenerator {
+  constructor() {
+    this.documentationUrl = 'https://jsxgraph.org/docs/';
+  }
+  
+  generate(template, concept, parameters) {
+    // Extract needed parameters
+    const { expression, domain, range } = parameters;
+    
+    // Generate code based on concept type
+    switch (concept.type) {
+      case 'function2D':
+        return this.generateFunction2D(expression, domain, range, parameters);
+      case 'geometry':
+        return this.generateGeometry(parameters);
+      default:
+        return this.generateGeneric(template, concept, parameters);
+    }
+  }
+  
+  generateFunction2D(expression, domain, range, parameters) {
+    const code = `
+// JSXGraph Function Visualization
+const board = JXG.JSXGraph.initBoard('visualization-container', {
+  boundingbox: [${domain[0]}, ${range[1]}, ${domain[1]}, ${range[0]}],
+  axis: true,
+  grid: true
+});
+
+// Define the function
+function f(x) {
+  return ${expression};
+}
+
+// Create the function graph
+const graph = board.create('functiongraph', [f, ${domain[0]}, ${domain[1]}], {
+  strokeColor: '#3090FF',
+  strokeWidth: 2
+});
+
+// Add a movable point on the x-axis
+const xPoint = board.create('glider', [0, 0, board.defaultAxes.x], {
+  name: 'x',
+  size: 5,
+  color: 'blue'
+});
+
+// Add a point on the function that moves with the x-point
+const fnPoint = board.create('point', [
+  function() { return xPoint.X(); },
+  function() { return f(xPoint.X()); }
+], {
+  name: 'f(x)',
+  size: 5,
+  color: '#3090FF'
+});
+
+// Add a line segment connecting the points
+board.create('line', [xPoint, fnPoint], {
+  straightFirst: false,
+  straightLast: false,
+  strokeColor: 'black',
+  strokeWidth: 1,
+  dash: 2
+});
+
+// Show the function value at the current x
+board.create('text', [
+  function() { return xPoint.X() + 0.5; },
+  function() { return f(xPoint.X()) + 0.5; },
+  function() { return 'f(' + xPoint.X().toFixed(2) + ') = ' + f(xPoint.X()).toFixed(2); }
+], {fontSize: 16});`;
+
+    return code;
+  }
+  
+  generateGeometry(parameters) {
+    // Generate geometry code based on parameters
+    let points = '';
+    let shapes = '';
+    
+    // Generate point definitions
+    if (parameters.points && parameters.points.length > 0) {
+      points = parameters.points.map(point => {
+        return `const ${point.label} = board.create('point', [${point.coordinates.join(', ')}], {
+  name: '${point.label}',
+  size: 4,
+  color: '${point.color || 'blue'}'
+});`;
+      }).join('\n\n');
+    }
+    
+    // Generate code for shapes if applicable
+    if (parameters.shapes && parameters.shapes.length > 0) {
+      shapes = parameters.shapes.map(shape => {
+        if (shape.type === 'polygon') {
+          return `const ${shape.id || 'poly'} = board.create('polygon', [${shape.points.join(', ')}], {
+  fillColor: '${shape.fillColor || 'lightblue'}',
+  fillOpacity: ${shape.fillOpacity || 0.3},
+  borders: {
+    strokeColor: '${shape.strokeColor || 'blue'}',
+    strokeWidth: ${shape.strokeWidth || 2}
+  }
+});`;
+        } else if (shape.type === 'circle') {
+          return `const ${shape.id || 'circle'} = board.create('circle', [${shape.center}, ${shape.radius}], {
+  strokeColor: '${shape.strokeColor || 'black'}',
+  strokeWidth: ${shape.strokeWidth || 2},
+  fillColor: '${shape.fillColor || 'none'}',
+  fillOpacity: ${shape.fillOpacity || 0}
+});`;
+        }
+        return '';
+      }).join('\n\n');
+    }
+    
+    const code = `
+// JSXGraph Geometry Visualization
+const board = JXG.JSXGraph.initBoard('visualization-container', {
+  boundingbox: [${parameters.domain[0]}, ${parameters.range[1]}, ${parameters.domain[1]}, ${parameters.range[0]}],
+  axis: true,
+  grid: true
+});
+
+// Define points
+${points}
+
+// Define shapes
+${shapes}`;
+
+    return code;
+  }
+  
+  generateGeneric(template, concept, parameters) {
+    // Use template to generate code
+    return template.code
+      .replace('{{DOMAIN_MIN}}', parameters.domain[0])
+      .replace('{{DOMAIN_MAX}}', parameters.domain[1])
+      .replace('{{RANGE_MIN}}', parameters.range[0])
+      .replace('{{RANGE_MAX}}', parameters.range[1])
+      .replace('{{EXPRESSION}}', parameters.expression || 'x');
+  }
+  
+  getLanguage() {
+    return 'javascript';
+  }
+  
+  getImports(conceptType) {
+    return [
+      "import JXG from 'jsxgraph';",
+      "import 'jsxgraph/distrib/jsxgraph.css';"
+    ];
+  }
+}
+```
+
+### 4. Library Selector
+
+The Library Selector determines the optimal visualization library for a given mathematical concept and requirements.
+
+#### Implementation Details
+
+```javascript
+class LibrarySelector {
+  constructor() {
+    // Define library capabilities
+    this.libraries = {
+      'mathbox': {
+        features: ['3D', 'surface', 'parametric', 'animation'],
+        conceptSupport: {
+          'function3D': 'excellent',
+          'vectorField': 'excellent',
+          'parametricSurface': 'excellent',
+          'function2D': 'good',
+          'geometry': 'limited'
+        },
+        complexity: 'high',
+        performance: 'medium',
+        react: 'wrapper',
+        installation: 'npm',
+        browserSupport: 'modern'
+      },
+      'mafs': {
+        features: ['2D', 'vector', 'function', 'interactive'],
+        conceptSupport: {
+          'function2D': 'excellent',
+          'vectorField2D': 'excellent',
+          'geometry': 'good',
+          'calculus': 'good',
+          'function3D': 'none'
+        },
+        complexity: 'low',
+        performance: 'high',
+        react: 'native',
+        installation: 'npm',
+        browserSupport: 'all'
+      },
+      'jsxgraph': {
+        features: ['2D', 'geometry', 'function', 'interactive', 'construction'],
+        conceptSupport: {
+          'geometry': 'excellent',
+          'function2D': 'excellent',
+          'calculus': 'good',
+          'linearAlgebra': 'good',
+          'function3D': 'limited'
+        },
+        complexity: 'medium',
+        performance: 'high',
+        react: 'wrapper',
+        installation: 'cdn',
+        browserSupport: 'all'
+      },
+      'd3': {
+        features: ['2D', 'data', 'custom', 'animation'],
+        conceptSupport: {
+          'statistics': 'excellent',
+          'data': 'excellent',
+          'function2D': 'good',
+          'geometry': 'good',
+          'function3D': 'limited'
+        },
+        complexity: 'high',
+        performance: 'medium',
+        react: 'wrapper',
+        installation: 'npm',
+        browserSupport: 'all'
+      },
+      'threejs': {
+        features: ['3D', 'custom', 'animation', 'performance'],
+        conceptSupport: {
+          'function3D': 'good',
+          'vectorField': 'good',
+          'parametricSurface': 'good',
+          'physics': 'excellent',
+          'function2D': 'limited'
+        },
+        complexity: 'high',
+        performance: 'excellent',
+        react: 'wrapper',
+        installation: 'npm',
+        browserSupport: 'modern'
+      }
+    };
+  }
+  
+  selectLibrary(analysis) {
+    // Extract relevant information from analysis
+    const { concept, visualization } = analysis;
+    const { dimensionality, complexity } = visualization;
+    
+    // First filter by dimensionality
+    const candidates = Object.entries(this.libraries)
+      .filter(([name, lib]) => {
+        if (dimensionality === '3D') {
+          return lib.features.includes('3D');
+        }
+        return true;
+      })
+      .map(([name, lib]) => ({
+        name,
+        score: this.scoreLibrary(name, lib, concept, visualization),
+        lib
+      }));
+    
+    // Sort by score (descending)
+    candidates.sort((a, b) => b.score - a.score);
+    
+    // Return the highest-scoring library
+    return candidates[0].name;
+  }
+  
+  scoreLibrary(name, library, concept, visualization) {
+    // Calculate a score for how well this library matches the requirements
+    let score = 0;
+    
+    // Score based on concept support
+    const conceptScore = this.getConceptSupportScore(library, concept.type);
+    score += conceptScore * 3; // Weight concept support highly
+    
+    // Score based on dimensionality
+    if (visualization.dimensionality === '3D' && library.features.includes('3D')) {
+      score += 5;
+    } else if (visualization.dimensionality === '2D' && library.features.includes('2D')) {
+      score += 5;
+    }
+    
+    // Score based on complexity
+    const complexityScore = this.getComplexityScore(library, visualization.complexity);
+    score += complexityScore;
+    
+    // Score based on interactivity
+    if (visualization.interactivity === 'high' && library.features.includes('interactive')) {
+      score += 3;
+    }
+    
+    // Adjust score based on library-specific considerations
+    switch (name) {
+      case 'mafs':
+        // Bonus for React native integration
+        if (library.react === 'native') {
+          score += 2;
+        }
+        break;
+      case 'mathbox':
+        // Bonus for 3D specialized math visualizations
+        if (concept.type === 'function3D' || concept.type === 'parametricSurface') {
+          score += 3;
+        }
+        break;
+      case 'jsxgraph':
+        // Bonus for geometry constructions
+        if (concept.type === 'geometry') {
+          score += 3;
+        }
+        break;
+      case 'd3':
+        // Bonus for data-driven or statistics visualizations
+        if (concept.type === 'statistics' || concept.type === 'data') {
+          score += 4;
+        }
+        break;
+      case 'threejs':
+        // Bonus for complex 3D or performance-intensive visualizations
+        if (visualization.complexity === 'advanced' && visualization.dimensionality === '3D') {
+          score += 3;
+        }
+        break;
+    }
+    
+    return score;
+  }
+  
+  getConceptSupportScore(library, conceptType) {
+    // Convert concept support rating to a numeric score
+    const support = library.conceptSupport[conceptType] || 'none';
+    switch (support) {
+      case 'excellent': return 10;
+      case 'good': return 7;
+      case 'limited': return 3;
+      case 'none': return 0;
+      default: return 0;
+    }
+  }
+  
+  getComplexityScore(library, requiredComplexity) {
+    // Score based on how well the library's complexity matches requirements
+    const complexityMap = {
+      'low': 1,
+      'medium': 2,
+      'high': 3
+    };
+    
+    const libraryComplexity = complexityMap[library.complexity] || 2;
+    const requiredComplexityValue = complexityMap[requiredComplexity] || 2;
+    
+    // Perfect match gets highest score
+    if (libraryComplexity === requiredComplexityValue) {
+      return 5;
+    }
+    
+    // Library is more complex than needed (potentially overkill)
+    if (libraryComplexity > requiredComplexityValue) {
+      return 3;
+    }
+    
+    // Library is less complex than needed (potentially insufficient)
+    return 1;
+  }
+}
+```
+
+### 5. Educational Synthesizer
+
+The Educational Synthesizer generates educational content to accompany visualizations, including explanations, step-by-step guides, and interactive exercises.
+
+#### Implementation Details
+
+```javascript
+class EducationalSynthesizer {
+  constructor() {
+    this.mathKnowledgeBase = new MathematicalKnowledgeBase();
+  }
+  
+  generateEducationalContent(analysis) {
+    // Extract relevant information
+    const { concept, parameters, educationalLevel } = analysis;
+    
+    // Generate content based on concept type
+    const conceptInfo = this.mathKnowledgeBase.getConceptInfo(concept.type);
+    
+    // Generate title
+    const title = this.generateTitle(concept, conceptInfo);
+    
+    // Generate summary
+    const summary = this.generateSummary(concept, conceptInfo, educationalLevel);
+    
+    // Generate key points
+    const keyPoints = this.generateKeyPoints(concept, conceptInfo, educationalLevel);
+    
+    // Generate steps
+    const steps = this.generateSteps(concept, parameters, educationalLevel);
+    
+    // Generate exercises
+    const exercises = this.generateExercises(concept, parameters, educationalLevel);
+    
+    // Return the complete educational content
+    return {
+      title,
+      summary,
+      keyPoints,
+      steps,
+      exercises,
+      level: educationalLevel,
+      relatedConcepts: conceptInfo.relatedConcepts || []
+    };
+  }
+  
+  generateTitle(concept, conceptInfo) {
+    // Generate an appropriate title based on the concept
+    if (concept.subtype) {
+      return `Understanding ${conceptInfo.name}: ${concept.subtype.charAt(0).toUpperCase() + concept.subtype.slice(1)}`;
+    }
+    return `Exploring ${conceptInfo.name}`;
+  }
+  
+  generateSummary(concept, conceptInfo, level) {
+    // Generate a summary appropriate for the educational level
+    let summary = conceptInfo.description || '';
+    
+    // Add concept-specific content to the summary
+    switch (concept.type) {
+      case 'function2D':
+        summary += ` A function assigns exactly one output value to each input value. `;
+        if (level === 'beginner') {
+          summary += `The graph of a function shows all its input-output pairs as points in a coordinate system.`;
+        } else {
+          summary += `Graphically, a function f(x) represents the set of all points (x, f(x)) in the Cartesian plane.`;
+        }
+        break;
+      case 'function3D':
+        summary += ` A 3D function f(x,y) maps each point (x,y) in the domain to a height z = f(x,y). `;
+        summary += `This creates a surface in 3D space.`;
+        break;
+      case 'geometry':
+        summary += ` Geometric constructions allow us to visualize and explore properties of shapes and their relationships. `;
+        summary += `Interactive geometry helps build intuition about mathematical properties.`;
+        break;
+      case 'calculus':
+        summary += ` Calculus provides tools for understanding how quantities change and accumulate. `;
+        summary += `Visualization helps develop intuition for these abstract concepts.`;
+        break;
+    }
+    
+    return summary;
+  }
+  
+  generateKeyPoints(concept, conceptInfo, level) {
+    // Generate key points appropriate for the educational level
+    const keyPoints = [];
+    
+    // Add concept-specific key points
+    switch (concept.type) {
+      case 'function2D':
+        keyPoints.push('A function assigns exactly one output value to each input value');
+        keyPoints.push('The graph visually represents the relationship between inputs and outputs');
+        
+        if (concept.subtype === 'polynomial') {
+          keyPoints.push('Polynomial functions are expressed as sums of terms with different powers of the variable');
+          if (level !== 'beginner') {
+            keyPoints.push('The degree of a polynomial determines its end behavior');
+            keyPoints.push('A polynomial of degree n can have at most n real roots');
+          }
+        } else if (concept.subtype === 'trigonometric') {
+          keyPoints.push('Trigonometric functions are periodic and relate to circular motion');
+          keyPoints.push('Sine and cosine functions oscillate between -1 and 1');
+          if (level !== 'beginner') {
+            keyPoints.push('The period of sine and cosine is 2π');
+            keyPoints.push('Trigonometric functions can model oscillatory phenomena');
+          }
+        }
+        break;
+      case 'function3D':
+        keyPoints.push('A 3D function maps two input variables to one output value');
+        keyPoints.push('The graph forms a surface in 3D space');
+        keyPoints.push('Level curves show points where the function has the same value');
+        if (level !== 'beginner') {
+          keyPoints.push('Partial derivatives measure rates of change with respect to each input variable');
+          keyPoints.push('The gradient vector points in the direction of steepest increase');
+        }
+        break;
+      case 'geometry':
+        keyPoints.push('Geometric constructions visualize mathematical relationships');
+        keyPoints.push('Points, lines, and shapes can be related through various properties');
+        if (level !== 'beginner') {
+          keyPoints.push('Transformations preserve certain properties while changing others');
+          keyPoints.push('Constraints can define relationships between geometric elements');
+        }
+        break;
+    }
+    
+    return keyPoints;
+  }
+  
+  generateSteps(concept, parameters, level) {
+    // Generate step-by-step guidance appropriate for the educational level
+    const steps = [];
+    
+    // Add concept-specific steps
+    switch (concept.type) {
+      case 'function2D':
+        // Steps for understanding a 2D function
+        steps.push({
+          title: 'Identify the Type of Function',
+          content: `Examine the expression ${parameters.expression || 'f(x)'} to determine what type of function it is.`
+        });
+        
+        steps.push({
+          title: 'Determine Key Features',
+          content: `Look for important points like x-intercepts, y-intercept, and extrema.`
+        });
+        
+        steps.push({
+          title: 'Analyze the Behavior',
+          content: `Examine how the function behaves as x approaches important values and as |x| gets very large.`
+        });
+        
+        if (level !== 'beginner') {
+          steps.push({
+            title: 'Find the Derivative',
+            content: `Calculate f'(x) to understand the rate of change and find critical points.`
+          });
+          
+          steps.push({
+            title: 'Interpret the Results',
+            content: `Connect the mathematical properties to real-world meaning or applications.`
+          });
+        }
+        break;
+      case 'function3D':
+        // Steps for understanding a 3D function
+        steps.push({
+          title: 'Examine the Function Expression',
+          content: `Analyze the expression ${parameters.expression || 'f(x,y)'} to understand how it depends on both variables.`
+        });
+        
+        steps.push({
+          title: 'Identify Special Cases',
+          content: `Look at what happens when one variable is fixed, creating 2D slices of the surface.`
+        });
+        
+        steps.push({
+          title: 'Locate Critical Points',
+          content: `Find points where both partial derivatives equal zero, which may be extrema.`
+        });
+        
+        if (level !== 'beginner') {
+          steps.push({
+            title: 'Analyze Level Curves',
+            content: `Study the pattern of level curves to understand the function's behavior.`
+          });
+          
+          steps.push({
+            title: 'Determine the Gradient',
+            content: `Calculate the gradient vector to find the direction of steepest increase.`
+          });
+        }
+        break;
+      case 'geometry':
+        // Steps for understanding geometric constructions
+        steps.push({
+          title: 'Identify the Basic Elements',
+          content: `Recognize the fundamental geometric objects like points, lines, and circles in the construction.`
+        });
+        
+        steps.push({
+          title: 'Understand Relationships',
+          content: `Analyze how the elements relate to each other through properties like distance, angle, or area.`
+        });
+        
+        steps.push({
+          title: 'Explore Dynamic Behavior',
+          content: `Move points or modify parameters to see how the construction changes.`
+        });
+        
+        if (level !== 'beginner') {
+          steps.push({
+            title: 'Prove Key Properties',
+            content: `Verify important properties of the construction through geometric or algebraic proofs.`
+          });
+          
+          steps.push({
+            title: 'Connect to Wider Concepts',
+            content: `Relate the construction to broader mathematical areas or applications.`
+          });
+        }
+        break;
+    }
+    
+    return steps;
+  }
+  
+  generateExercises(concept, parameters, level) {
+    // Generate exercises appropriate for the educational level
+    const exercises = [];
+    
+    // Add concept-specific exercises
+    switch (concept.type) {
+      case 'function2D':
+        // Basic exercise
+        exercises.push({
+          question: `Find the y-intercept of the function ${parameters.expression || 'f(x)'}.`,
+          solution: `To find the y-intercept, substitute x = 0 into the function.`
+        });
+        
+        // Add more challenging exercises for higher levels
+        if (level === 'intermediate' || level === 'advanced') {
+          exercises.push({
+            question: `Find all values of x where the function ${parameters.expression || 'f(x)'} equals zero.`,
+            solution: `To find these values, set ${parameters.expression || 'f(x)'} = 0 and solve for x.`
+          });
+          
+          exercises.push({
+            question: `Find the intervals where the function ${parameters.expression || 'f(x)'} is increasing.`,
+            solution: `First find f'(x), then determine where f'(x) > 0.`
+          });
+        }
+        
+        if (level === 'advanced') {
+          exercises.push({
+            question: `Find the inflection points of the function ${parameters.expression || 'f(x)'}.`,
+            solution: `Find where the second derivative f''(x) = 0 and confirm that f''(x) changes sign.`
+          });
+        }
+        break;
+      case 'function3D':
+        // Basic exercise
+        exercises.push({
+          question: `Find the value of the function ${parameters.expression || 'f(x,y)'} at the origin (0,0).`,
+          solution: `Substitute x = 0 and y = 0 into the function expression.`
+        });
+        
+        // Add more challenging exercises for higher levels
+        if (level === 'intermediate' || level === 'advanced') {
+          exercises.push({
+            question: `Find the partial derivative ∂f/∂x of the function ${parameters.expression || 'f(x,y)'}.`,
+            solution: `Differentiate the function with respect to x, treating y as a constant.`
+          });
+          
+          exercises.push({
+            question: `Describe the level curve of ${parameters.expression || 'f(x,y)'} corresponding to z = 0.`,
+            solution: `Set ${parameters.expression || 'f(x,y)'} = 0 and solve for the relationship between x and y.`
+          });
+        }
+        
+        if (level === 'advanced') {
+          exercises.push({
+            question: `Find the critical points of the function ${parameters.expression || 'f(x,y)'} and classify them.`,
+            solution: `Set both partial derivatives to zero and solve the system of equations. Then use the second derivative test to classify each point.`
+          });
+        }
+        break;
+      case 'geometry':
+        // Basic exercise
+        exercises.push({
+          question: `Calculate the area of the shape formed by the given points.`,
+          solution: `Divide the shape into triangles and calculate the sum of their areas.`
+        });
+        
+        // Add more challenging exercises for higher levels
+        if (level === 'intermediate' || level === 'advanced') {
+          exercises.push({
+            question: `Prove that the point you identified is indeed the centroid of the triangle.`,
+            solution: `Show that the point is located at (x1 + x2 + x3)/3, (y1 + y2 + y3)/3 where (x1,y1), (x2,y2), (x3,y3) are the vertices.`
+          });
+          
+          exercises.push({
+            question: `What happens to the area of the shape when point A is moved to the origin?`,
+            solution: `Recalculate the area with the new coordinates and compare to the original area.`
+          });
+        }
+        
+        if (level === 'advanced') {
+          exercises.push({
+            question: `Find the equation of the circle that circumscribes the triangle formed by the given points.`,
+            solution: `Use the fact that the perpendicular bisectors of the sides of a triangle meet at the circumcenter.`
+          });
+        }
+        break;
+    }
+    
+    return exercises;
+  }
+}
+```
+
+### 6. Content Adapter
+
+The Content Adapter tailors educational content to different user levels and learning contexts.
+
+#### Implementation Details
+
+```javascript
+class ContentAdapter {
+  constructor(options = {}) {
+    this.options = options;
+    
+    // Define educational levels
+    this.levels = {
+      'beginner': {
+        vocabulary: 'simple',
+        mathNotation: 'minimal',
+        explanationDepth: 'basic',
+        prerequisites: 'none'
+      },
+      'intermediate': {
+        vocabulary: 'standard',
+        mathNotation: 'moderate',
+        explanationDepth: 'detailed',
+        prerequisites: 'algebra'
+      },
+      'advanced': {
+        vocabulary: 'technical',
+        mathNotation: 'extensive',
+        explanationDepth: 'comprehensive',
+        prerequisites: 'calculus'
+      }
+    };
+    
+    // Define learning styles
+    this.learningStyles = {
+      'visual': {
+        emphasize: ['diagrams', 'graphs', 'animations'],
+        deemphasize: ['formulas', 'technical descriptions']
+      },
+      'analytical': {
+        emphasize: ['formulas', 'proofs', 'derivations'],
+        deemphasize: ['analogies', 'informal descriptions']
+      },
+      'interactive': {
+        emphasize: ['examples', 'exercises', 'applications'],
+        deemphasize: ['theoretical descriptions']
+      },
+      'conceptual': {
+        emphasize: ['big picture', 'connections', 'intuition'],
+        deemphasize: ['procedural details']
+      }
+    };
+  }
+  
+  adaptContent(content, targetLevel, targetStyle = 'balanced') {
+    // Validate input
+    if (!content || !targetLevel) {
+      throw new Error('Invalid input for content adaptation');
+    }
+    
+    // Get level parameters
+    const levelParams = this.levels[targetLevel] || this.levels['intermediate'];
+    
+    // Get learning style parameters
+    const styleParams = this.learningStyles[targetStyle] || {};
+    
+    // Adapt content components
+    const adaptedContent = {
+      title: content.title,
+      summary: this.adaptText(content.summary, levelParams, styleParams),
+      keyPoints: content.keyPoints.map(point => 
+        this.adaptText(point, levelParams, styleParams)
+      ),
+      steps: content.steps.map(step => ({
+        title: step.title,
+        content: this.adaptText(step.content, levelParams, styleParams)
+      })),
+      exercises: this.adaptExercises(content.exercises, targetLevel),
+      level: targetLevel,
+      style: targetStyle,
+      relatedConcepts: content.relatedConcepts
+    };
+    
+    // Add level-specific content
+    adaptedContent.prerequisites = this.getPrerequistitesForLevel(content, targetLevel);
+    
+    // Add style-specific content
+    adaptedContent.recommendedActivities = this.getActivitiesForStyle(content, targetStyle);
+    
+    return adaptedContent;
+  }
+  
+  adaptText(text, levelParams, styleParams) {
+    if (!text) return '';
+    
+    // Apply level-specific text adaptations
+    let adapted = text;
+    
+    // Simplify vocabulary for beginners
+    if (levelParams.vocabulary === 'simple') {
+      adapted = this.simplifyVocabulary(adapted);
+    }
+    
+    // Reduce math notation for beginners
+    if (levelParams.mathNotation === 'minimal') {
+      adapted = this.simplifyMathNotation(adapted);
+    }
+    
+    // Apply learning style adaptations
+    if (styleParams.emphasize) {
+      adapted = this.emphasizeAspects(adapted, styleParams.emphasize);
+    }
+    
+    return adapted;
+  }
+  
+  simplifyVocabulary(text) {
+    // Replace complex terms with simpler alternatives
+    const replacements = {
+      'differentiate': 'find the rate of change',
+      'integrate': 'find the area under the curve',
+      'monotonically': 'in the same direction',
+      'orthogonal': 'perpendicular',
+      'asymptotic': 'approaches but never reaches',
+      'polynomial': 'expression with powers of x',
+      'derivative': 'rate of change',
+      'logarithmic': 'based on powers'
+    };
+    
+    let simplified = text;
+    Object.entries(replacements).forEach(([complex, simple]) => {
+      simplified = simplified.replace(new RegExp(`\\b${complex}\\b`, 'gi'), simple);
+    });
+    
+    return simplified;
+  }
+  
+  simplifyMathNotation(text) {
+    // Replace complex notation with simpler alternatives
+    const replacements = {
+      '\\frac{d}{dx}': 'the derivative',
+      '\\int': 'the integral',
+      '\\sum': 'the sum',
+      '\\prod': 'the product',
+      '\\lim': 'the limit',
+      '\\infty': 'infinity',
+      '\\partial': 'partial'
+    };
+    
+    let simplified = text;
+    Object.entries(replacements).forEach(([complex, simple]) => {
+      simplified = simplified.replace(new RegExp(complex, 'g'), simple);
+    });
+    
+    return simplified;
+  }
+  
+  emphasizeAspects(text, aspects) {
+    // Add emphasis to specific aspects based on learning style
+    if (aspects.includes('diagrams')) {
+      text += ' Visualizing this concept with diagrams can be very helpful.';
+    }
+    
+    if (aspects.includes('examples')) {
+      text += ' Working through examples is a great way to understand this.';
+    }
+    
+    if (aspects.includes('applications')) {
+      text += ' This concept has many real-world applications.';
+    }
+    
+    return text;
+  }
+  
+  adaptExercises(exercises, targetLevel) {
+    if (!exercises || exercises.length === 0) {
+      return [];
+    }
+    
+    // Filter exercises based on level
+    let levelIndex = ['beginner', 'intermediate', 'advanced'].indexOf(targetLevel);
+    if (levelIndex === -1) levelIndex = 1; // Default to intermediate
+    
+    // For beginners, return only the simplest exercises
+    if (levelIndex === 0) {
+      return exercises.slice(0, 1);
+    }
+    
+    // For intermediate, return a balanced mix
+    if (levelIndex === 1) {
+      return exercises.slice(0, Math.min(2, exercises.length));
+    }
+    
+    // For advanced, return all exercises
+    return exercises;
+  }
+  
+  getPrerequistitesForLevel(content, level) {
+    // Return level-appropriate prerequisites
+    switch (level) {
+      case 'beginner':
+        return ['Basic algebra', 'Coordinate plane understanding'];
+      case 'intermediate':
+        return ['Algebra', 'Functions', 'Trigonometry', 'Basic calculus concepts'];
+      case 'advanced':
+        return ['Calculus I & II', 'Linear algebra', 'Differential equations'];
+      default:
+        return ['Basic mathematical knowledge'];
+    }
+  }
+  
+  getActivitiesForStyle(content, style) {
+    // Return style-appropriate learning activities
+    const activities = [];
+    
+    switch (style) {
+      case 'visual':
+        activities.push('Sketch the concept by hand');
+        activities.push('Create a visual summary');
+        activities.push('Watch related video demonstrations');
+        break;
+      case 'analytical':
+        activities.push('Derive the formulas yourself');
+        activities.push('Solve proof-based exercises');
+        activities.push('Connect to formal definitions');
+        break;
+      case 'interactive':
+        activities.push('Modify parameters and observe changes');
+        activities.push('Apply to real-world problems');
+        activities.push('Create your own examples');
+        break;
+      case 'conceptual':
+        activities.push('Explain the concept to someone else');
+        activities.push('Connect to other mathematical areas');
+        activities.push('Create a concept map');
+        break;
+      default:
+        activities.push('Practice with varied examples');
+        activities.push('Review and summarize key points');
+        activities.push('Apply to simple problems');
+    }
+    
+    return activities;
+  }
+}
+```
+
+## Enhanced Visualization Agent API
+
+The agent exposes a clean API for integration with the Math-LLM system:
+
+```javascript
+class EnhancedVisualizationAgent {
+  constructor(options = {}) {
+    // Initialize components
+    this.conceptAnalyzer = new ConceptAnalyzer(options.analyzer);
+    this.visualizationGenerator = new VisualizationGenerator(options.generator);
+    this.librarySelector = new LibrarySelector();
+    this.educationalSynthesizer = new EducationalSynthesizer();
+    this.contentAdapter = new ContentAdapter(options.adapter);
+  }
+  
+  async processMathProblem(problem, options = {}) {
+    // Default options
+    const {
+      educationalLevel = 'auto',
+      learningStyle = 'balanced',
+      visualizationPreference = null,
+      includeExercises = true
+    } = options;
+    
+    // 1. Analyze the problem
+    const analysis = await this.conceptAnalyzer.analyzeProblem(problem);
+    
+    // 2. Determine the actual educational level to use
+    const actualLevel = educationalLevel === 'auto' 
+      ? analysis.educationalLevel 
+      : educationalLevel;
+    
+    // 3. Select the visualization library
+    const selectedLibrary = visualizationPreference || 
+      this.librarySelector.selectLibrary(analysis);
+    
+    // 4. Generate the visualization
+    const visualization = this.visualizationGenerator.generateVisualization(
+      analysis, 
+      selectedLibrary
+    );
+    
+    // 5. Generate educational content
+    const rawEducationalContent = this.educationalSynthesizer.generateEducationalContent(
+      analysis
+    );
+    
+    // 6. Adapt content to the target level and learning style
+    const educationalContent = this.contentAdapter.adaptContent(
+      rawEducationalContent,
+      actualLevel,
+      learningStyle
+    );
+    
+    // 7. Return the complete solution
+    return {
+      query: problem,
+      analysis,
+      visualization,
+      educationalContent,
+      metaData: {
+        processingTime: new Date(),
+        educationalLevel: actualLevel,
+        learningStyle,
+        selectedLibrary
+      }
+    };
+  }
+  
+  async generateVisualizationFromConcept(concept, parameters, options = {}) {
+    // For direct concept-based generation without natural language query
+    const {
+      library = null,
+      educationalLevel = 'intermediate',
+      learningStyle = 'balanced'
+    } = options;
+    
+    // Create a minimal analysis object
+    const analysis = {
+      concept,
+      parameters,
+      visualization: {
+        dimensionality: parameters.zRange ? '3D' : '2D',
+        complexity: 'standard',
+        viewport: {
+          x: parameters.domain,
+          y: parameters.range,
+          z: parameters.zRange || [-10, 10]
+        }
+      },
+      educationalLevel
+    };
+    
+    // Select library if not specified
+    const selectedLibrary = library || this.librarySelector.selectLibrary(analysis);
+    
+    // Generate visualization
+    const visualization = this.visualizationGenerator.generateVisualization(
+      analysis, 
+      selectedLibrary
+    );
+    
+    // Generate educational content
+    const rawEducationalContent = this.educationalSynthesizer.generateEducationalContent(
+      analysis
+    );
+    
+    // Adapt content
+    const educationalContent = this.contentAdapter.adaptContent(
+      rawEducationalContent,
+      educationalLevel,
+      learningStyle
+    );
+    
+    // Return result
+    return {
+      visualization,
+      educationalContent,
+      selectedLibrary
+    };
+  }
+  
+  async enhanceVisualization(baseVisualization, enhancementOptions) {
+    // Enhance an existing visualization with additional features
+    const {
+      interactivity = false,
+      animations = false,
+      annotations = false,
+      challenges = false
+    } = enhancementOptions;
+    
+    // Clone the base visualization
+    const enhancedVisualization = JSON.parse(JSON.stringify(baseVisualization));
+    
+    // Apply enhancements
+    if (interactivity) {
+      enhancedVisualization.code = this.addInteractivity(
+        enhancedVisualization.code,
+        enhancedVisualization.library,
+        enhancementOptions.interactivityOptions
+      );
+    }
+    
+    if (animations) {
+      enhancedVisualization.code = this.addAnimations(
+        enhancedVisualization.code,
+        enhancedVisualization.library,
+        enhancementOptions.animationOptions
+      );
+    }
+    
+    if (annotations) {
+      enhancedVisualization.code = this.addAnnotations(
+        enhancedVisualization.code,
+        enhancedVisualization.library,
+        enhancementOptions.annotationOptions
+      );
+    }
+    
+    if (challenges) {
+      enhancedVisualization.code = this.addChallenges(
+        enhancedVisualization.code,
+        enhancedVisualization.library,
+        enhancementOptions.challengeOptions
+      );
+    }
+    
+    return enhancedVisualization;
+  }
+  
+  addInteractivity(code, library, options = {}) {
+    // Add interactive elements to the visualization code
+    // Implementation would depend on the specific library
+    return code;
+  }
+  
+  addAnimations(code, library, options = {}) {
+    // Add animation capabilities to the visualization code
+    // Implementation would depend on the specific library
+    return code;
+  }
+  
+  addAnnotations(code, library, options = {}) {
+    // Add educational annotations to the visualization code
+    // Implementation would depend on the specific library
+    return code;
+  }
+  
+  addChallenges(code, library, options = {}) {
+    // Add interactive challenges to the visualization code
+    // Implementation would depend on the specific library
+    return code;
+  }
+}
+```
+
+## Usage Examples
+
+### 1. Basic Problem Processing
+
+```javascript
+// Initialize the enhanced visualization agent
+const agent = new EnhancedVisualizationAgent();
+
+// Process a math problem
+const solution = await agent.processMathProblem(
+  "Graph the function f(x) = x^2 - 3x + 2 and identify its key features."
+);
+
+// Use the results
+console.log(solution.analysis);
+console.log(solution.visualization.code);
+console.log(solution.educationalContent.summary);
+```
+
+### 2. Customized Educational Content
+
+```javascript
+// Process with specific educational preferences
+const advancedSolution = await agent.processMathProblem(
+  "Visualize the 3D function f(x,y) = sin(x) * cos(y) and explain its features.",
+  {
+    educationalLevel: 'advanced',
+    learningStyle: 'analytical',
+    includeExercises: true
+  }
+);
+
+// Use the tailored educational content
+console.log(advancedSolution.educationalContent.steps);
+console.log(advancedSolution.educationalContent.exercises);
+```
+
+### 3. Direct Visualization Generation
+
+```javascript
+// Generate visualization directly from concept
+const visualization = await agent.generateVisualizationFromConcept(
+  {
+    type: 'function2D',
+    subtype: 'polynomial',
+    expression: 'x^3 - 2*x^2 + x - 3',
+    variables: ['x']
+  },
+  {
+    domain: [-3, 3],
+    range: [-10, 10],
+    functions: [
+      {
+        label: 'f',
+        expression: 'x^3 - 2*x^2 + x - 3',
+        color: '#3090FF'
+      }
+    ]
+  },
+  {
+    library: 'jsxgraph',
+    educationalLevel: 'intermediate'
+  }
+);
+
+// Render the visualization
+const visualizationElement = renderCode(visualization.code, visualization.library);
+document.getElementById('container').appendChild(visualizationElement);
+```
+
+### 4. Enhanced Visualization
+
+```javascript
+// Start with a basic visualization
+const basicSolution = await agent.processMathProblem(
+  "Create a visualization of a triangle with vertices at (0,0), (4,0), and (2,3)."
+);
+
+// Enhance it with interactivity and challenges
+const enhancedVisualization = await agent.enhanceVisualization(
+  basicSolution.visualization,
+  {
+    interactivity: true,
+    annotations: true,
+    challenges: true,
+    challengeOptions: {
+      questions: [
+        "What is the area of this triangle?",
+        "Where is the centroid located?"
+      ]
+    }
+  }
+);
+
+// Render the enhanced visualization
+const enhancedElement = renderCode(
+  enhancedVisualization.code, 
+  enhancedVisualization.library
+);
+document.getElementById('enhanced-container').appendChild(enhancedElement);
+```
+
+## Conclusion and Implementation Priorities
+
+The Enhanced Visualization Agent provides a powerful, intelligent interface between mathematical problems and interactive visualizations. By combining natural language understanding, mathematical knowledge, and educational expertise, it delivers optimal visualizations with appropriate educational context.
+
+### Implementation Priorities
+
+1. **Core Analysis Pipeline**: Implement the concept analyzer with basic NLP features
+2. **Visualization Generator**: Create templates for the core visualization libraries
+3. **Educational Content**: Implement basic educational content generation
+4. **Library Selection**: Develop the library selection logic
+5. **API Integration**: Ensure clean integration with the Math-LLM system
+6. **Enhanced Features**: Add interactive controls, animations, and educational annotations
+7. **User Adaptation**: Implement educational level and learning style adaptation
+
+By following this guide, you'll create an intelligent agent that can interpret mathematical concepts, select appropriate visualizations, and generate educational content that enhances the learning experience for users across different knowledge levels and learning styles.

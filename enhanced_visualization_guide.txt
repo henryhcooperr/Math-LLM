@@ -1,0 +1,1331 @@
+# Enhanced Visualization Guide: Math-LLM System
+
+This guide details advanced visualization techniques to be implemented in the Math-LLM system, extending the core functionality with interactive, educational, and analytically powerful features.
+
+## Core Visualization Enhancements
+
+### 1. Interactive Controls
+
+Every visualization should incorporate appropriate interactive controls to enhance learning:
+
+#### Parameter Controls
+```javascript
+// Example: Adding a parameter slider for function visualization
+function addParameterSlider(container, parameter, min, max, step, defaultValue, updateFn) {
+  const sliderContainer = document.createElement('div');
+  sliderContainer.className = 'parameter-control';
+  
+  const label = document.createElement('label');
+  label.textContent = `${parameter}: `;
+  
+  const valueDisplay = document.createElement('span');
+  valueDisplay.textContent = defaultValue;
+  valueDisplay.className = 'parameter-value';
+  
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min;
+  slider.max = max;
+  slider.step = step;
+  slider.value = defaultValue;
+  
+  slider.addEventListener('input', () => {
+    const value = parseFloat(slider.value);
+    valueDisplay.textContent = value;
+    updateFn(value);
+  });
+  
+  sliderContainer.appendChild(label);
+  sliderContainer.appendChild(slider);
+  sliderContainer.appendChild(valueDisplay);
+  container.appendChild(sliderContainer);
+  
+  return { slider, valueDisplay };
+}
+```
+
+#### Control Types by Visualization
+| Visualization Type | Recommended Controls | Purpose |
+|-------------------|----------------------|---------|
+| function2D | Parameter sliders, derivative toggle | Adjust function parameters, show/hide derivatives |
+| function3D | Rotation controls, slice plane | Change viewing angle, examine cross-sections |
+| geometry | Draggable points, measurements | Explore geometric properties | 
+| vectorField | Density slider, particle animation | Adjust detail level, visualize flow |
+| parameterSpace | Time slider, animation controls | Observe evolution over parameter space |
+
+### 2. Animation Capabilities
+
+Implement animations to demonstrate dynamic processes or transformations:
+
+```javascript
+// Example: Creating an animation for a parametric curve
+function createParametricAnimation(renderer, options) {
+  const { tMin, tMax, tStep, fps = 30, duration = 5 } = options;
+  
+  let t = tMin;
+  let animationId = null;
+  const totalFrames = duration * fps;
+  const tDelta = (tMax - tMin) / totalFrames;
+  
+  const animate = () => {
+    // Update parameter
+    t += tDelta;
+    if (t > tMax) t = tMin;
+    
+    // Update visualization with new parameter value
+    renderer.updateParameter('t', t);
+    
+    // Continue animation
+    animationId = requestAnimationFrame(animate);
+  };
+  
+  // Animation controls
+  const controls = {
+    start() {
+      if (!animationId) {
+        animate();
+      }
+    },
+    stop() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    },
+    reset() {
+      t = tMin;
+      renderer.updateParameter('t', t);
+    }
+  };
+  
+  return controls;
+}
+```
+
+#### Animation Applications
+- **Transformations**: Linear transformations in vector spaces
+- **Calculus Concepts**: Riemann sums approaching integrals
+- **Parametric Evolution**: Curves and surfaces as parameters change
+- **Time-based Systems**: Differential equations and dynamic systems
+- **Sequences and Limits**: Successive approximations
+
+### 3. Multi-Modal Visualizations
+
+Combine multiple visualization techniques to provide comprehensive understanding:
+
+```javascript
+// Example: Creating a multi-modal visualization for calculus concepts
+function createCalculusMultiModalVisualization(container, expression, domain) {
+  const multiContainer = document.createElement('div');
+  multiContainer.className = 'multi-modal-container';
+  
+  // Function visualization panel
+  const functionPanel = document.createElement('div');
+  functionPanel.className = 'visualization-panel';
+  const functionViz = renderFunctionVisualization(expression, domain);
+  functionPanel.appendChild(functionViz);
+  
+  // Derivative visualization panel
+  const derivativePanel = document.createElement('div');
+  derivativePanel.className = 'visualization-panel';
+  getDerivative(expression).then(derivative => {
+    const derivativeViz = renderFunctionVisualization(derivative, domain);
+    derivativePanel.appendChild(derivativeViz);
+  });
+  
+  // Tangent line visualization panel
+  const tangentPanel = document.createElement('div');
+  tangentPanel.className = 'visualization-panel';
+  const tangentViz = renderTangentVisualization(expression, domain);
+  tangentPanel.appendChild(tangentViz);
+  
+  // Add panels to container
+  multiContainer.appendChild(functionPanel);
+  multiContainer.appendChild(derivativePanel);
+  multiContainer.appendChild(tangentPanel);
+  container.appendChild(multiContainer);
+  
+  return multiContainer;
+}
+```
+
+#### Multi-Modal Applications
+- **Function + Derivative**: Side-by-side comparison of function and derivative
+- **2D + 3D**: Showing a 2D slice of a 3D surface
+- **Algebraic + Geometric**: Equation alongside geometric representation
+- **Symbolic + Numeric**: Symbolic solution with numeric approximation
+- **Visual + Textual**: Visual representation with mathematical notation
+
+### 4. Progressive Complexity
+
+Implement visualizations that gradually reveal complexity as the user engages:
+
+```javascript
+// Example: Progressive complexity for a function visualization
+class ProgressiveVisualization {
+  constructor(container, options) {
+    this.container = container;
+    this.options = options;
+    this.complexityLevel = 0;
+    this.maxLevel = 3;
+    
+    this.render();
+    this.addComplexityControl();
+  }
+  
+  render() {
+    this.container.innerHTML = '';
+    
+    switch(this.complexityLevel) {
+      case 0: // Basic
+        this.renderBasic();
+        break;
+      case 1: // Intermediate
+        this.renderIntermediate();
+        break;
+      case 2: // Advanced
+        this.renderAdvanced();
+        break;
+      case 3: // Expert
+        this.renderExpert();
+        break;
+    }
+  }
+  
+  renderBasic() {
+    // Render simple function graph
+    const viz = createSimpleVisualization(this.options);
+    this.container.appendChild(viz);
+  }
+  
+  renderIntermediate() {
+    // Add derivatives, critical points
+    const viz = createIntermediateVisualization(this.options);
+    this.container.appendChild(viz);
+  }
+  
+  renderAdvanced() {
+    // Add interactive elements, parameter exploration
+    const viz = createAdvancedVisualization(this.options);
+    this.container.appendChild(viz);
+  }
+  
+  renderExpert() {
+    // Add related functions, comparisons, analytical features
+    const viz = createExpertVisualization(this.options);
+    this.container.appendChild(viz);
+  }
+  
+  addComplexityControl() {
+    const control = document.createElement('div');
+    control.className = 'complexity-control';
+    
+    const decreaseBtn = document.createElement('button');
+    decreaseBtn.textContent = 'Simpler';
+    decreaseBtn.addEventListener('click', () => {
+      if (this.complexityLevel > 0) {
+        this.complexityLevel--;
+        this.render();
+      }
+    });
+    
+    const increaseBtn = document.createElement('button');
+    increaseBtn.textContent = 'More Details';
+    increaseBtn.addEventListener('click', () => {
+      if (this.complexityLevel < this.maxLevel) {
+        this.complexityLevel++;
+        this.render();
+      }
+    });
+    
+    control.appendChild(decreaseBtn);
+    control.appendChild(increaseBtn);
+    this.container.appendChild(control);
+  }
+}
+```
+
+#### Complexity Levels
+1. **Basic**: Core concept visualization without details
+2. **Intermediate**: Adding relevant properties and features
+3. **Advanced**: Interactive elements and related concepts
+4. **Expert**: Analytical features and theoretical connections
+
+### 5. Linked Representations
+
+Implement visualizations where changes in one representation automatically update other linked views:
+
+```javascript
+// Example: Linked algebraic and geometric representations
+function createLinkedRepresentations(container, options) {
+  const linkedContainer = document.createElement('div');
+  linkedContainer.className = 'linked-representations';
+  
+  // Create algebraic representation
+  const algebraicContainer = document.createElement('div');
+  algebraicContainer.className = 'algebraic-representation';
+  const algebraicView = createAlgebraicView(options);
+  algebraicContainer.appendChild(algebraicView);
+  
+  // Create geometric representation
+  const geometricContainer = document.createElement('div');
+  geometricContainer.className = 'geometric-representation';
+  const geometricView = createGeometricView(options);
+  geometricContainer.appendChild(geometricView);
+  
+  // Set up the linking
+  const linkState = {
+    parameters: { ...options.initialParameters },
+    updateListeners: []
+  };
+  
+  // Create update function
+  const updateLinkedViews = (parameter, value) => {
+    linkState.parameters[parameter] = value;
+    
+    // Notify all listeners
+    linkState.updateListeners.forEach(listener => {
+      listener(parameter, value, linkState.parameters);
+    });
+  };
+  
+  // Register update listeners
+  const registerUpdateListener = (listener) => {
+    linkState.updateListeners.push(listener);
+  };
+  
+  // Register the views
+  registerAlgebraicViewListeners(algebraicView, updateLinkedViews, registerUpdateListener);
+  registerGeometricViewListeners(geometricView, updateLinkedViews, registerUpdateListener);
+  
+  // Add views to container
+  linkedContainer.appendChild(algebraicContainer);
+  linkedContainer.appendChild(geometricContainer);
+  container.appendChild(linkedContainer);
+  
+  return linkedContainer;
+}
+```
+
+#### Link Types
+- **Equation ↔ Graph**: Interactive equation elements update graph
+- **Coordinate ↔ Point**: Coordinate input updates point positions
+- **Parameter ↔ Visual**: Parameter changes affect visualization properties
+- **Symbolic ↔ Numeric**: Symbolic expressions linked to numerical values
+- **Multiple Views**: All views reflect the same underlying mathematical model
+
+## Specialized Visualization Features
+
+### 1. Calculus Visualizations
+
+Implement specialized features for calculus concepts:
+
+#### Derivatives and Tangents
+```javascript
+function createDerivativeVisualization(container, expression, domain, options = {}) {
+  const { showTangent = true, showDerivative = true, initialX = 0 } = options;
+  
+  // Create base function visualization
+  const visualization = renderFunctionVisualization(container, expression, domain);
+  
+  if (showTangent) {
+    // Add interactive tangent line
+    const tangentLine = createTangentLine(visualization, expression, initialX);
+    
+    // Add x-position control
+    const xControl = addParameterSlider(
+      container, 
+      'x', 
+      domain[0], domain[1], 
+      (domain[1] - domain[0]) / 100, 
+      initialX,
+      (value) => tangentLine.updatePosition(value)
+    );
+  }
+  
+  if (showDerivative) {
+    // Compute and display derivative function
+    getDerivative(expression).then(derivative => {
+      const derivativeCurve = addDerivativeCurve(visualization, derivative, domain);
+    });
+  }
+  
+  return visualization;
+}
+```
+
+#### Integrals and Area
+```javascript
+function createIntegralVisualization(container, expression, domain, options = {}) {
+  const { 
+    lowerBound = domain[0], 
+    upperBound = domain[1], 
+    showRiemannSum = true,
+    rectangleCount = 10 
+  } = options;
+  
+  // Create base function visualization
+  const visualization = renderFunctionVisualization(container, expression, domain);
+  
+  // Add shaded area for the integral
+  const shadedArea = addShadedArea(visualization, expression, lowerBound, upperBound);
+  
+  // Add controls for bounds
+  const lowerBoundControl = addParameterSlider(
+    container, 
+    'Lower Bound', 
+    domain[0], domain[1], 
+    (domain[1] - domain[0]) / 100, 
+    lowerBound,
+    (value) => {
+      if (value < upperBoundControl.slider.value) {
+        shadedArea.updateBounds(value, upperBoundControl.slider.value);
+        if (riemannSum) {
+          riemannSum.updateBounds(value, upperBoundControl.slider.value);
+        }
+      }
+    }
+  );
+  
+  const upperBoundControl = addParameterSlider(
+    container, 
+    'Upper Bound', 
+    domain[0], domain[1], 
+    (domain[1] - domain[0]) / 100, 
+    upperBound,
+    (value) => {
+      if (value > lowerBoundControl.slider.value) {
+        shadedArea.updateBounds(lowerBoundControl.slider.value, value);
+        if (riemannSum) {
+          riemannSum.updateBounds(lowerBoundControl.slider.value, value);
+        }
+      }
+    }
+  );
+  
+  // Add Riemann sum visualization if requested
+  let riemannSum = null;
+  if (showRiemannSum) {
+    riemannSum = addRiemannSum(
+      visualization, 
+      expression, 
+      lowerBound, 
+      upperBound, 
+      rectangleCount
+    );
+    
+    // Add control for rectangle count
+    const rectangleCountControl = addParameterSlider(
+      container,
+      'Rectangles',
+      2, 100, 1, rectangleCount,
+      (value) => riemannSum.updateRectangleCount(value)
+    );
+  }
+  
+  return visualization;
+}
+```
+
+#### Limits and Convergence
+```javascript
+function createLimitVisualization(container, expression, point, options = {}) {
+  const { 
+    domain = [point - 2, point + 2],
+    epsilon = 0.5, 
+    delta = 0.5,
+    animate = true 
+  } = options;
+  
+  // Create base function visualization
+  const visualization = renderFunctionVisualization(container, expression, domain);
+  
+  // Add epsilon-delta visualization
+  const epsilonDeltaViz = addEpsilonDeltaVisualization(
+    visualization, 
+    expression, 
+    point, 
+    epsilon, 
+    delta
+  );
+  
+  // Add controls for epsilon and delta
+  const epsilonControl = addParameterSlider(
+    container,
+    'ε (Epsilon)',
+    0.01, 2, 0.01, epsilon,
+    (value) => epsilonDeltaViz.updateEpsilon(value)
+  );
+  
+  const deltaControl = addParameterSlider(
+    container,
+    'δ (Delta)',
+    0.01, 2, 0.01, delta,
+    (value) => epsilonDeltaViz.updateDelta(value)
+  );
+  
+  // Add animation for convergence demonstration
+  if (animate) {
+    const animationControls = addLimitAnimationControls(
+      container,
+      epsilonDeltaViz
+    );
+  }
+  
+  return visualization;
+}
+```
+
+### 2. Linear Algebra Visualizations
+
+Implement specialized features for linear algebra concepts:
+
+#### Vector Spaces and Transformations
+```javascript
+function createLinearTransformationVisualization(container, matrix, options = {}) {
+  const { 
+    domain = [-5, 5], 
+    range = [-5, 5],
+    showGrid = true,
+    showBasisVectors = true,
+    animate = true
+  } = options;
+  
+  // Create the visualization container
+  const visualization = createLinearAlgebraVisualization(container, domain, range);
+  
+  // Add coordinate grid
+  if (showGrid) {
+    addCoordinateGrid(visualization, domain, range);
+  }
+  
+  // Add basis vectors
+  if (showBasisVectors) {
+    addBasisVectors(visualization);
+  }
+  
+  // Add vectors to transform
+  const vectors = addVectors(visualization, options.vectors || [
+    [1, 0], [0, 1], [1, 1], [2, 1], [1, 2]
+  ]);
+  
+  // Add the linear transformation
+  const transformation = addLinearTransformation(visualization, matrix);
+  
+  // Add animation control
+  if (animate) {
+    const animationControls = addTransformationAnimation(
+      container,
+      transformation,
+      vectors
+    );
+  }
+  
+  // Add matrix controls
+  const matrixControls = addMatrixControls(
+    container,
+    matrix,
+    (newMatrix) => transformation.updateMatrix(newMatrix)
+  );
+  
+  return visualization;
+}
+```
+
+#### Eigenvalues and Eigenvectors
+```javascript
+function createEigenvisualization(container, matrix, options = {}) {
+  const {
+    domain = [-5, 5],
+    range = [-5, 5],
+    showEigenvectors = true,
+    showEigenspaces = true
+  } = options;
+  
+  // Create linear transformation visualization first
+  const visualization = createLinearTransformationVisualization(
+    container, matrix, { domain, range, animate: false }
+  );
+  
+  // Calculate eigenvalues and eigenvectors
+  const { eigenvalues, eigenvectors } = calculateEigen(matrix);
+  
+  // Add eigenvalue information
+  addEigenvalueDisplay(container, eigenvalues);
+  
+  // Add eigenvectors
+  if (showEigenvectors) {
+    addEigenvectors(visualization, eigenvectors, eigenvalues);
+  }
+  
+  // Add eigenspaces
+  if (showEigenspaces) {
+    addEigenspaces(visualization, eigenvectors, eigenvalues);
+  }
+  
+  // Add demonstration animation
+  const eigenAnimation = addEigenAnimation(
+    container,
+    visualization,
+    matrix,
+    eigenvectors,
+    eigenvalues
+  );
+  
+  return visualization;
+}
+```
+
+### 3. Geometry Visualizations
+
+Implement specialized features for geometric concepts:
+
+#### Interactive Constructions
+```javascript
+function createInteractiveGeometryConstruction(container, options = {}) {
+  const {
+    domain = [-5, 5],
+    range = [-5, 5],
+    initialElements = []
+  } = options;
+  
+  // Create geometry visualization
+  const visualization = createGeometryVisualization(container, domain, range);
+  
+  // Add initial elements
+  addGeometricElements(visualization, initialElements);
+  
+  // Add construction tools
+  const constructionTools = addConstructionTools(container, visualization);
+  
+  // Add measurement tools
+  const measurementTools = addMeasurementTools(container, visualization);
+  
+  // Add constraint tools
+  const constraintTools = addConstraintTools(container, visualization);
+  
+  return visualization;
+}
+```
+
+#### Transformations and Symmetry
+```javascript
+function createGeometricTransformationVisualization(container, options = {}) {
+  const {
+    domain = [-5, 5],
+    range = [-5, 5],
+    shape = 'triangle',
+    transformationType = 'rotation',
+    animate = true
+  } = options;
+  
+  // Create geometry visualization
+  const visualization = createGeometryVisualization(container, domain, range);
+  
+  // Add the initial shape
+  const initialShape = addGeometricShape(visualization, shape);
+  
+  // Add transformation controls
+  const transformationControls = addTransformationControls(
+    container,
+    transformationType,
+    (params) => updateTransformation(visualization, initialShape, transformationType, params)
+  );
+  
+  // Add animation controls
+  if (animate) {
+    const animationControls = addTransformationAnimation(
+      container,
+      visualization,
+      initialShape,
+      transformationType
+    );
+  }
+  
+  return visualization;
+}
+```
+
+### 4. Probability and Statistics Visualizations
+
+Implement specialized features for statistical concepts:
+
+#### Distributions and Sampling
+```javascript
+function createDistributionVisualization(container, distributionType, params, options = {}) {
+  const {
+    domain = [0, 1],
+    range = [0, 1],
+    sampleSize = 100,
+    showSamples = true,
+    showSamplingDistribution = true
+  } = options;
+  
+  // Create statistics visualization
+  const visualization = createStatisticsVisualization(container, domain, range);
+  
+  // Add the probability distribution
+  const distribution = addProbabilityDistribution(
+    visualization,
+    distributionType,
+    params
+  );
+  
+  // Add sampling functionality
+  if (showSamples) {
+    const samplingViz = addSamplingVisualization(
+      visualization,
+      distribution,
+      sampleSize
+    );
+    
+    // Add sampling controls
+    const samplingControls = addSamplingControls(
+      container,
+      samplingViz,
+      sampleSize
+    );
+  }
+  
+  // Add sampling distribution visualization
+  if (showSamplingDistribution) {
+    const samplingDistribution = addSamplingDistribution(
+      visualization,
+      distribution,
+      sampleSize
+    );
+  }
+  
+  return visualization;
+}
+```
+
+#### Hypothesis Testing and Confidence Intervals
+```javascript
+function createHypothesisTestVisualization(container, sampleData, testType, options = {}) {
+  const {
+    nullValue = 0,
+    alpha = 0.05,
+    alternative = 'two-sided',
+    showPValue = true,
+    showTestStatistic = true,
+    showCriticalRegion = true
+  } = options;
+  
+  // Create the hypothesis test visualization
+  const visualization = createStatisticsVisualization(container);
+  
+  // Calculate test statistics
+  const testResult = calculateHypothesisTest(sampleData, testType, {
+    nullValue,
+    alpha,
+    alternative
+  });
+  
+  // Add sampling distribution under null hypothesis
+  const nullDistribution = addNullDistribution(
+    visualization,
+    testType,
+    testResult
+  );
+  
+  // Add test statistic
+  if (showTestStatistic) {
+    addTestStatistic(visualization, testResult);
+  }
+  
+  // Add critical region
+  if (showCriticalRegion) {
+    addCriticalRegion(visualization, testResult, alpha, alternative);
+  }
+  
+  // Add p-value visualization
+  if (showPValue) {
+    addPValueVisualization(visualization, testResult);
+  }
+  
+  // Add controls for test parameters
+  const testControls = addHypothesisTestControls(
+    container,
+    visualization,
+    testResult,
+    {
+      nullValue,
+      alpha,
+      alternative
+    },
+    (newParams) => updateHypothesisTest(visualization, sampleData, testType, newParams)
+  );
+  
+  return visualization;
+}
+```
+
+### 5. Differential Equations Visualizations
+
+Implement specialized features for differential equations:
+
+#### Slope Fields and Solutions
+```javascript
+function createSlopeFieldVisualization(container, equation, options = {}) {
+  const {
+    domain = [-5, 5],
+    range = [-5, 5],
+    density = 20,
+    initialConditions = [[0, 1]],
+    showSolutions = true
+  } = options;
+  
+  // Create differential equation visualization
+  const visualization = createDifferentialEquationVisualization(container, domain, range);
+  
+  // Add slope field
+  const slopeField = addSlopeField(visualization, equation, density);
+  
+  // Add solution curves for initial conditions
+  if (showSolutions && initialConditions.length > 0) {
+    const solutions = initialConditions.map(condition => 
+      addSolutionCurve(visualization, equation, condition)
+    );
+    
+    // Add interactive initial condition creator
+    const interactiveInitialCondition = addInteractiveInitialCondition(
+      visualization,
+      equation,
+      (newCondition) => addSolutionCurve(visualization, equation, newCondition)
+    );
+  }
+  
+  // Add equation controls
+  const equationControls = addDifferentialEquationControls(
+    container,
+    equation,
+    (newEquation) => {
+      slopeField.updateEquation(newEquation);
+      if (showSolutions) {
+        solutions.forEach(solution => solution.updateEquation(newEquation));
+      }
+    }
+  );
+  
+  return visualization;
+}
+```
+
+#### Phase Portraits and Stability
+```javascript
+function createPhasePortraitVisualization(container, systemEquations, options = {}) {
+  const {
+    domain = [-5, 5],
+    range = [-5, 5],
+    density = 20,
+    showTrajectories = true,
+    showEquilibria = true,
+    initialConditions = []
+  } = options;
+  
+  // Create system visualization
+  const visualization = createSystemVisualization(container, domain, range);
+  
+  // Add vector field
+  const vectorField = addVectorField(visualization, systemEquations, density);
+  
+  // Find and display equilibrium points
+  if (showEquilibria) {
+    const equilibria = findEquilibriaPoints(systemEquations, domain, range);
+    addEquilibriaPoints(visualization, equilibria);
+    
+    // Analyze and display stability
+    addStabilityInfo(container, equilibria, systemEquations);
+  }
+  
+  // Add trajectories
+  if (showTrajectories) {
+    const trajectories = initialConditions.map(condition =>
+      addTrajectory(visualization, systemEquations, condition)
+    );
+    
+    // Add interactive trajectory creation
+    const interactiveTrajectory = addInteractiveTrajectory(
+      visualization,
+      systemEquations,
+      (newCondition) => addTrajectory(visualization, systemEquations, newCondition)
+    );
+  }
+  
+  return visualization;
+}
+```
+
+## Performance Optimization Techniques
+
+### 1. Efficient Rendering for Complex Visualizations
+
+```javascript
+// WebGL-based rendering for performance
+function optimizeRendering(visualization, options = {}) {
+  const {
+    useWebGL = true,
+    downsamplingSensitivity = 0.5,
+    useWebWorkers = true
+  } = options;
+  
+  if (useWebGL) {
+    // Convert to WebGL rendering
+    convertToWebGLRendering(visualization);
+  }
+  
+  // Add level-of-detail control
+  const levelOfDetailController = createLODController(
+    visualization,
+    downsamplingSensitivity
+  );
+  
+  // Move expensive calculations to web workers
+  if (useWebWorkers) {
+    setupCalculationWorkers(visualization);
+  }
+  
+  // Add frame rate monitoring
+  const performanceMonitor = addPerformanceMonitor(visualization);
+  
+  return {
+    levelOfDetailController,
+    performanceMonitor
+  };
+}
+```
+
+### 2. Progressive Loading
+
+```javascript
+// Progressive loading for complex visualizations
+function enableProgressiveLoading(visualization, options = {}) {
+  const {
+    initialQuality = 'low',
+    autoUpgrade = true,
+    qualityLevels = ['low', 'medium', 'high', 'ultra']
+  } = options;
+  
+  // Add quality controller
+  const qualityController = createQualityController(
+    visualization,
+    initialQuality,
+    qualityLevels
+  );
+  
+  // Initial render at low quality
+  qualityController.setQuality(initialQuality);
+  
+  // Set up automatic quality upgrades when idle
+  if (autoUpgrade) {
+    setupAutoQualityUpgrade(visualization, qualityController);
+  }
+  
+  return qualityController;
+}
+```
+
+### 3. Lazy Computation
+
+```javascript
+// Lazy/deferred computation system
+function createLazyComputationManager(visualization) {
+  // Track high-cost computations
+  const computationQueue = [];
+  let isProcessing = false;
+  
+  // Add a computation to the queue
+  const enqueueComputation = (computationFn, priority = 'normal') => {
+    computationQueue.push({
+      fn: computationFn,
+      priority: priorityToValue(priority),
+      added: Date.now()
+    });
+    
+    // Start processing if not already running
+    if (!isProcessing) {
+      processComputationQueue();
+    }
+  };
+  
+  // Convert priority string to numeric value
+  const priorityToValue = (priority) => {
+    switch(priority) {
+      case 'high': return 3;
+      case 'normal': return 2;
+      case 'low': return 1;
+      default: return 2;
+    }
+  };
+  
+  // Process items in the computation queue
+  const processComputationQueue = async () => {
+    if (computationQueue.length === 0) {
+      isProcessing = false;
+      return;
+    }
+    
+    isProcessing = true;
+    
+    // Sort by priority, then by age
+    computationQueue.sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return b.priority - a.priority;
+      }
+      return a.added - b.added;
+    });
+    
+    // Process computation with yielding
+    const computation = computationQueue.shift();
+    await runWithYielding(computation.fn);
+    
+    // Continue processing
+    requestIdleCallback(() => processComputationQueue());
+  };
+  
+  // Run a function with yielding to avoid blocking
+  const runWithYielding = async (fn) => {
+    // Use generator or chunkify approach to yield processing
+    return new Promise(resolve => {
+      setTimeout(() => {
+        fn();
+        resolve();
+      }, 0);
+    });
+  };
+  
+  return {
+    enqueueComputation
+  };
+}
+```
+
+## Integration with Educational Content
+
+### 1. Explanation Annotations
+
+```javascript
+// Add explanation annotations to visualization
+function addExplanationAnnotations(visualization, explanations) {
+  const annotationLayer = createAnnotationLayer(visualization);
+  
+  // Add each explanation
+  const annotations = explanations.map(explanation => {
+    const { position, text, type = 'basic' } = explanation;
+    
+    return addAnnotation(
+      annotationLayer,
+      position,
+      text,
+      type
+    );
+  });
+  
+  // Add control panel for visibility
+  const annotationControls = addAnnotationControls(
+    visualization.container,
+    annotations
+  );
+  
+  return annotations;
+}
+```
+
+### 2. Step-by-Step Animation
+
+```javascript
+// Create step-by-step animation sequence
+function createStepByStepAnimation(visualization, steps) {
+  const stepController = {
+    currentStep: 0,
+    steps: steps,
+    stepAnnotations: []
+  };
+  
+  // Create controls
+  const controls = document.createElement('div');
+  controls.className = 'step-by-step-controls';
+  
+  // Previous button
+  const prevButton = document.createElement('button');
+  prevButton.textContent = '< Previous';
+  prevButton.addEventListener('click', () => {
+    if (stepController.currentStep > 0) {
+      stepController.currentStep--;
+      showCurrentStep();
+    }
+  });
+  
+  // Next button
+  const nextButton = document.createElement('button');
+  nextButton.textContent = 'Next >';
+  nextButton.addEventListener('click', () => {
+    if (stepController.currentStep < steps.length - 1) {
+      stepController.currentStep++;
+      showCurrentStep();
+    }
+  });
+  
+  // Step indicator
+  const stepIndicator = document.createElement('span');
+  stepIndicator.className = 'step-indicator';
+  
+  // Add controls to container
+  controls.appendChild(prevButton);
+  controls.appendChild(stepIndicator);
+  controls.appendChild(nextButton);
+  visualization.container.appendChild(controls);
+  
+  // Step explanation panel
+  const explanationPanel = document.createElement('div');
+  explanationPanel.className = 'step-explanation-panel';
+  visualization.container.appendChild(explanationPanel);
+  
+  // Function to display current step
+  const showCurrentStep = () => {
+    const step = steps[stepController.currentStep];
+    
+    // Update step indicator
+    stepIndicator.textContent = `Step ${stepController.currentStep + 1}/${steps.length}`;
+    
+    // Update explanation panel
+    explanationPanel.innerHTML = step.explanation || '';
+    
+    // Clear previous annotations
+    stepController.stepAnnotations.forEach(annotation => {
+      annotation.remove();
+    });
+    stepController.stepAnnotations = [];
+    
+    // Apply visualization changes
+    if (step.action) {
+      step.action(visualization);
+    }
+    
+    // Add new annotations
+    if (step.annotations) {
+      stepController.stepAnnotations = addExplanationAnnotations(
+        visualization,
+        step.annotations
+      );
+    }
+  };
+  
+  // Initialize with first step
+  showCurrentStep();
+  
+  return stepController;
+}
+```
+
+### 3. Interactive Challenges
+
+```javascript
+// Create interactive challenges
+function createInteractiveChallenge(visualization, challenge) {
+  const { 
+    question, 
+    correctAnswer, 
+    hintSequence = [],
+    feedbackFn 
+  } = challenge;
+  
+  // Create challenge UI
+  const challengeContainer = document.createElement('div');
+  challengeContainer.className = 'interactive-challenge';
+  
+  // Add question
+  const questionElement = document.createElement('div');
+  questionElement.className = 'challenge-question';
+  questionElement.innerHTML = question;
+  challengeContainer.appendChild(questionElement);
+  
+  // Add answer input
+  const answerInput = document.createElement('input');
+  answerInput.type = 'text';
+  answerInput.className = 'challenge-answer-input';
+  challengeContainer.appendChild(answerInput);
+  
+  // Add submit button
+  const submitButton = document.createElement('button');
+  submitButton.textContent = 'Submit Answer';
+  submitButton.className = 'challenge-submit-button';
+  challengeContainer.appendChild(submitButton);
+  
+  // Add hint button
+  const hintButton = document.createElement('button');
+  hintButton.textContent = 'Get Hint';
+  hintButton.className = 'challenge-hint-button';
+  challengeContainer.appendChild(hintButton);
+  
+  // Add feedback area
+  const feedbackArea = document.createElement('div');
+  feedbackArea.className = 'challenge-feedback';
+  challengeContainer.appendChild(feedbackArea);
+  
+  // Add hint area
+  const hintArea = document.createElement('div');
+  hintArea.className = 'challenge-hint';
+  challengeContainer.appendChild(hintArea);
+  
+  // Hint state
+  let currentHintIndex = -1;
+  
+  // Add event listeners
+  submitButton.addEventListener('click', () => {
+    const userAnswer = answerInput.value;
+    let isCorrect = false;
+    
+    // Check if answer is correct
+    if (typeof correctAnswer === 'function') {
+      isCorrect = correctAnswer(userAnswer);
+    } else if (Array.isArray(correctAnswer)) {
+      isCorrect = correctAnswer.includes(userAnswer);
+    } else {
+      isCorrect = userAnswer === correctAnswer;
+    }
+    
+    // Provide feedback
+    if (isCorrect) {
+      feedbackArea.innerHTML = '<div class="correct-answer">Correct! Well done.</div>';
+      
+      // Execute any feedback function
+      if (feedbackFn) {
+        feedbackFn(visualization, true, userAnswer);
+      }
+    } else {
+      feedbackArea.innerHTML = '<div class="incorrect-answer">Not quite right. Try again or use a hint.</div>';
+      
+      // Execute any feedback function
+      if (feedbackFn) {
+        feedbackFn(visualization, false, userAnswer);
+      }
+    }
+  });
+  
+  // Hint button handler
+  hintButton.addEventListener('click', () => {
+    if (currentHintIndex < hintSequence.length - 1) {
+      currentHintIndex++;
+      const hint = hintSequence[currentHintIndex];
+      hintArea.innerHTML = hint;
+      
+      // Update button text if this is the last hint
+      if (currentHintIndex === hintSequence.length - 1) {
+        hintButton.textContent = 'No more hints';
+        hintButton.disabled = true;
+      }
+    }
+  });
+  
+  // Add to visualization container
+  visualization.container.appendChild(challengeContainer);
+  
+  return {
+    checkAnswer: (answer) => {
+      answerInput.value = answer;
+      submitButton.click();
+    },
+    showNextHint: () => {
+      hintButton.click();
+    }
+  };
+}
+```
+
+## Accessibility Enhancements
+
+### 1. Screen Reader Support
+
+```javascript
+// Add screen reader support to visualizations
+function enhanceAccessibility(visualization) {
+  // Add ARIA attributes
+  visualization.container.setAttribute('role', 'application');
+  visualization.container.setAttribute('aria-label', visualization.title || 'Mathematical Visualization');
+  
+  // Add keyboard navigation
+  addKeyboardNavigation(visualization);
+  
+  // Add textual descriptions
+  addMathematicalDescriptions(visualization);
+  
+  // Add sonification if applicable
+  if (visualization.type === 'function2D') {
+    addFunctionSonification(visualization);
+  }
+  
+  return {
+    updateDescription: (description) => {
+      visualization.container.setAttribute('aria-label', description);
+    }
+  };
+}
+```
+
+### 2. Color Vision Deficiency Support
+
+```javascript
+// Add support for color vision deficiency
+function addColorVisionDeficiencySupport(visualization) {
+  // Create color scheme selector
+  const colorSchemeControl = document.createElement('div');
+  colorSchemeControl.className = 'color-scheme-control';
+  
+  const colorLabel = document.createElement('label');
+  colorLabel.textContent = 'Color Scheme: ';
+  colorSchemeControl.appendChild(colorLabel);
+  
+  const colorSelect = document.createElement('select');
+  colorSelect.id = 'color-scheme-select';
+  
+  // Add color scheme options
+  const schemes = [
+    { value: 'default', label: 'Default' },
+    { value: 'protanopia', label: 'Protanopia (Red-blind)' },
+    { value: 'deuteranopia', label: 'Deuteranopia (Green-blind)' },
+    { value: 'tritanopia', label: 'Tritanopia (Blue-blind)' },
+    { value: 'achromatopsia', label: 'Achromatopsia (Monochrome)' },
+    { value: 'highContrast', label: 'High Contrast' }
+  ];
+  
+  schemes.forEach(scheme => {
+    const option = document.createElement('option');
+    option.value = scheme.value;
+    option.textContent = scheme.label;
+    colorSelect.appendChild(option);
+  });
+  
+  colorSchemeControl.appendChild(colorSelect);
+  
+  // Add to visualization container
+  visualization.container.appendChild(colorSchemeControl);
+  
+  // Handle color scheme changes
+  colorSelect.addEventListener('change', () => {
+    const scheme = colorSelect.value;
+    applyColorScheme(visualization, scheme);
+  });
+  
+  return {
+    setColorScheme: (scheme) => {
+      colorSelect.value = scheme;
+      applyColorScheme(visualization, scheme);
+    }
+  };
+}
+```
+
+## Conclusion
+
+This enhanced visualization guide provides a comprehensive framework for implementing advanced interactive visualizations for mathematical concepts. By incorporating these features, the Math-LLM system will deliver engaging, educational, and accessible experiences that enhance learning and exploration of mathematical concepts.
+
+Key implementation priorities include:
+1. Interactive controls for parameter exploration
+2. Animation capabilities for dynamic concepts
+3. Multi-modal visualizations for comprehensive understanding
+4. Progressive complexity for scaffolded learning
+5. Accessibility enhancements for inclusive education
+
+These enhancements should be integrated into the core visualization system, making them available to all mathematical concept types as appropriate.

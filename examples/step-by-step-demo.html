@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math-LLM Step-by-Step Guides</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      background-color: #f8f9fa;
+    }
+    
+    header {
+      background-color: #32CD32;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    .intro {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .example-container {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1, h2, h3, h4 {
+      color: #2c3e50;
+    }
+    
+    h2 {
+      border-bottom: 2px solid #32CD32;
+      padding-bottom: 0.5rem;
+    }
+    
+    h3 {
+      color: #32CD32;
+      margin-top: 1.5rem;
+    }
+    
+    .explanation-content {
+      margin-top: 1rem;
+    }
+    
+    .summary {
+      font-style: italic;
+      color: #555;
+      border-left: 4px solid #32CD32;
+      padding-left: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .steps-list {
+      margin: 1.5rem 0;
+    }
+    
+    .step-item {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background-color: #f9f9f9;
+      border-radius: 0.5rem;
+      position: relative;
+    }
+    
+    .step-number {
+      position: absolute;
+      top: -10px;
+      left: 10px;
+      background-color: #32CD32;
+      color: white;
+      padding: 0.2rem 0.6rem;
+      border-radius: 1rem;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    
+    .step-item h4 {
+      margin-top: 0.5rem;
+      color: #32CD32;
+    }
+    
+    .emphasis {
+      background-color: #e8f5e9;
+      padding: 0.7rem;
+      margin-top: 0.5rem;
+      border-radius: 0.3rem;
+      font-family: 'Courier New', monospace;
+      color: #2c3e50;
+    }
+    
+    .questions-list {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    
+    .question-item {
+      margin-bottom: 1rem;
+      padding: 0.8rem;
+      background-color: #f5f5f5;
+      border-radius: 0.3rem;
+    }
+    
+    .question-text {
+      font-weight: bold;
+      margin-top: 0;
+    }
+    
+    .hint-text {
+      font-style: italic;
+      color: #555;
+      margin-bottom: 0;
+    }
+    
+    .references-list {
+      list-style-type: disc;
+      padding-left: 1.5rem;
+      color: #555;
+    }
+    
+    footer {
+      margin-top: 2rem;
+      padding: 1rem;
+      background-color: #2c3e50;
+      color: white;
+      text-align: center;
+    }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Math-LLM Step-by-Step Guides</h1>
+    <p>Detailed Explanations for Mathematical Concepts and Problem-Solving</p>
+  </header>
+  
+  <div class="container">
+    <div class="intro">
+      <h2>Introduction</h2>
+      <p>This demo showcases the Math-LLM system's capability to generate detailed step-by-step explanations for various mathematical problems. The examples below cover different topics including function analysis, calculus operations, and geometry.</p>
+      <p>Each explanation breaks down the problem into logical steps, provides key insights, and includes practice questions to reinforce understanding. These step-by-step guides can be used as educational tools to help students learn mathematical concepts in a structured way.</p>
+    </div>
+    
+    <div id="app">
+      <!-- JavaScript will insert example containers here -->
+      <div class="loading">Loading examples...</div>
+    </div>
+  </div>
+  
+  <footer>
+    <p>Math-LLM - Mathematical Visualization System</p>
+    <p>Step-by-Step Mathematical Guides</p>
+  </footer>
+  
+  <!-- Load the example script -->
+  <script type="module" src="step-by-step-guide.js"></script>
+</body>
+</html>

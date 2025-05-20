@@ -1,0 +1,503 @@
+# Dynamic Visualization Agent Guide
+
+This guide outlines how to create an agent capable of dynamically generating visualizations for mathematical concepts, even when the specific visualization type wasn't previously implemented. This is a critical capability that addresses the requirement: "if I asked it to visualize a decision tree, it should be able to do that," even without having a pre-built decision tree visualization component.
+
+## Core Capabilities for Dynamic Visualization
+
+Your agent should be able to:
+
+1. **Analyze Visualization Requests**: Determine what type of visualization is needed for a given math problem
+2. **Generate New Visualization Types**: Create code for previously unsupported visualization types
+3. **Apply Best Practices**: Optimize generated visualizations for performance and interactivity
+4. **Provide Educational Context**: Explain both the math concept and the visualization approach
+
+## Visualization Request Analysis Framework
+
+When a user requests a visualization, follow this analysis pattern:
+
+```
+function analyzeVisualizationRequest(request) {
+  // Step 1: Identify the core mathematical concept
+  const mathConcept = identifyMathematicalConcept(request);
+  
+  // Step 2: Determine appropriate visualization type
+  const vizType = determineVisualizationType(mathConcept);
+  
+  // Step 3: Check if we have a built-in visualization for this type
+  const isBuiltIn = checkBuiltInVisualization(vizType);
+  
+  // Step 4: If not built-in, prepare for dynamic generation
+  if (!isBuiltIn) {
+    return {
+      needsDynamicGeneration: true,
+      mathConcept: mathConcept,
+      visualizationType: vizType,
+      generationParameters: prepareGenerationParameters(mathConcept, vizType)
+    };
+  }
+  
+  // Step 5: For built-in types, return standard parameters
+  return {
+    needsDynamicGeneration: false,
+    mathConcept: mathConcept,
+    visualizationType: vizType,
+    visualizationParameters: prepareStandardParameters(mathConcept, vizType)
+  };
+}
+```
+
+### Visualization Type Identification Matrix
+
+Use this matrix to map math concepts to visualization types:
+
+| Math Concept Category | Example | Primary Visualization Type | Alternative Type |
+|------------------------|---------|---------------------------|------------------|
+| Single-variable functions | f(x) = x² + 2x + 1 | function2D | parameterPlot |
+| Multi-variable functions | f(x,y) = sin(x)cos(y) | function3D | contourPlot |
+| Geometric shapes | Triangle with vertices at (0,0), (1,0), (0,1) | geometry | interactiveGeometry |
+| Vector fields | F(x,y) = (y, -x) | vectorField | streamPlot |
+| Probability distributions | Normal distribution with μ=0, σ=1 | distributionPlot | histogram |
+| Categorical data | Data classification results | barChart | pieChart |
+| Decision processes | Binary classification tree | decisionTree | flowChart |
+| Linear algebra | Matrix operations | matrixVisualization | eigenGraph |
+| Differential equations | y' = y - x | solutionCurves | directionField |
+| Graph theory | Minimum spanning tree | graphNetwork | adjacencyMatrix |
+
+## Dynamic Code Generation Process
+
+When generating a new visualization type, follow this process:
+
+```
+async function generateVisualization(request, vizType, params) {
+  // Step 1: Determine the best library for this visualization type
+  const library = selectOptimalLibrary(vizType);
+  
+  // Step 2: Create a template for this visualization type
+  const template = await generateVisualizationTemplate(vizType, library);
+  
+  // Step 3: Instantiate the template with specific parameters
+  const code = instantiateTemplate(template, params);
+  
+  // Step 4: Validate the generated code
+  validateGeneratedCode(code);
+  
+  // Step 5: Return the complete visualization artifact
+  return {
+    code: code,
+    library: library,
+    params: params,
+    type: 'application/vnd.ant.react' // Assuming React components
+  };
+}
+```
+
+### Library Selection Strategy
+
+For different visualization types, select libraries based on these criteria:
+
+| Visualization Category | Primary Library | Backup Library | Selection Criteria |
+|------------------------|-----------------|----------------|-------------------|
+| 2D Function Plots | Mafs | JSXGraph | React-based environment needs, interactivity level |
+| 3D Visualizations | MathBox | Three.js | Complexity, mathematical precision needs |
+| Geometric Constructions | JSXGraph | GeoGebra | Interactivity requirements, construction complexity |
+| Data Visualizations | D3.js | Recharts | Data complexity, customization needs |
+| Network/Tree Diagrams | D3.js | vis.js | Network size, interaction requirements |
+| Statistical Plots | D3.js | Plotly | Statistical features, interactivity needs |
+
+## Template Generation Prompts
+
+When creating a new visualization type, use these prompting strategies to get high-quality code from the LLM:
+
+### Generic Visualization Template Prompt
+
+```
+You are an expert JavaScript developer specializing in mathematical visualization libraries. I need to create a new visualization component for a {VISUALIZATION_TYPE} that isn't currently built into our system.
+
+The visualization needs to represent: {MATHEMATICAL_CONCEPT}
+
+Please create a complete React component that implements this visualization using the {LIBRARY_NAME} library. The component should:
+
+1. Accept standard parameters like {PARAMETER_LIST}
+2. Include appropriate interactivity (zoom, pan, hover details)
+3. Be optimized for performance
+4. Include clear error handling
+5. Have a clean, educational design
+
+Return only the complete React component code without explanations. The code should be production-ready and fully functional.
+```
+
+### Decision Tree Visualization Example Prompt
+
+```
+You are an expert JavaScript developer specializing in mathematical visualization libraries. I need to create a new visualization component for a decision tree that isn't currently built into our system.
+
+The visualization needs to represent: A decision tree showing classification steps based on multiple variables.
+
+Please create a complete React component that implements this visualization using the D3.js library. The component should:
+
+1. Accept standard parameters like:
+   - tree: the decision tree data structure
+   - width/height: dimensions
+   - nodeLabels: labels for the decision nodes
+   - edgeLabels: labels for the edges
+   - colors: custom coloring scheme
+
+2. Include appropriate interactivity:
+   - Zoom and pan capabilities
+   - Hover details for nodes
+   - Collapsible subtrees
+
+3. Be optimized for performance even with large trees
+4. Include clear error handling for malformed data
+5. Have a clean, educational design that emphasizes the decision paths
+
+Return only the complete React component code without explanations. The code should be production-ready and fully functional.
+```
+
+## Code Validation and Sandboxing
+
+After generating code, always validate it before execution:
+
+```javascript
+function validateGeneratedCode(code) {
+  // Check for required imports
+  const hasRequiredImports = checkRequiredImports(code);
+  
+  // Check for appropriate React component structure
+  const hasValidComponentStructure = checkReactComponentStructure(code);
+  
+  // Check for potential security issues
+  const securityIssues = checkCodeSecurity(code);
+  
+  // Ensure code style consistency
+  const styleIssues = checkCodeStyle(code);
+  
+  if (!hasRequiredImports || !hasValidComponentStructure || 
+      securityIssues.length > 0 || styleIssues.length > 0) {
+    throw new Error('Generated code validation failed');
+  }
+  
+  return true;
+}
+```
+
+## Integration with Existing Visualization System
+
+To integrate dynamic visualization capabilities with your existing system:
+
+```javascript
+class MathVisualizationSystem {
+  constructor() {
+    this.visualizationRegistry = new Map();
+    this.registerBuiltInVisualizations();
+  }
+  
+  registerBuiltInVisualizations() {
+    // Register standard visualization types
+    this.visualizationRegistry.set('function2D', MafsFunction2DVisualizer);
+    this.visualizationRegistry.set('function3D', MathBoxFunction3DVisualizer);
+    this.visualizationRegistry.set('geometry', JSXGraphGeometryVisualizer);
+    // etc.
+  }
+  
+  async visualizeMathConcept(request) {
+    // Analyze the request
+    const analysis = analyzeVisualizationRequest(request);
+    
+    // Check if we need to generate a new visualization type
+    if (analysis.needsDynamicGeneration) {
+      // Generate the new visualization
+      const newVisualization = await generateVisualization(
+        request, 
+        analysis.visualizationType,
+        analysis.generationParameters
+      );
+      
+      // Optionally register for future use
+      this.registerDynamicVisualization(
+        analysis.visualizationType, 
+        newVisualization
+      );
+      
+      return this.createVisualizationArtifact(newVisualization);
+    }
+    
+    // Use built-in visualization
+    const visualizer = this.visualizationRegistry.get(analysis.visualizationType);
+    return this.createStandardVisualizationArtifact(
+      visualizer, 
+      analysis.visualizationParameters
+    );
+  }
+  
+  registerDynamicVisualization(type, visualization) {
+    // Store the dynamically generated visualization for future use
+    if (!this.visualizationRegistry.has(type)) {
+      // Convert the code to a component
+      const DynamicComponent = this.codeToComponent(visualization.code);
+      this.visualizationRegistry.set(type, DynamicComponent);
+    }
+  }
+  
+  codeToComponent(code) {
+    // In a real implementation, this would use something like dynamic imports
+    // This is a simplified example
+    try {
+      // This is not how you'd actually do this in production!
+      // You'd need a proper build process
+      return new Function(`return (${code})`)();
+    } catch (e) {
+      console.error('Error creating component from code:', e);
+      return FallbackComponent;
+    }
+  }
+  
+  createVisualizationArtifact(visualization) {
+    return {
+      type: 'artifact',
+      id: `viz-${Date.now()}`,
+      content: visualization.code,
+      type: 'application/vnd.ant.react'
+    };
+  }
+  
+  createStandardVisualizationArtifact(visualizer, params) {
+    // Create standard artifact using registered component
+    return {
+      type: 'artifact',
+      id: `viz-${Date.now()}`,
+      component: visualizer,
+      props: params,
+      type: 'application/vnd.ant.react'
+    };
+  }
+}
+```
+
+## Handling Complex Use Cases
+
+For complex visualization requests, break them down into manageable parts:
+
+### Decision Tree Example
+
+```javascript
+async function handleDecisionTreeRequest(request) {
+  // 1. Parse the request to extract decision tree structure
+  const treeData = extractDecisionTreeData(request);
+  
+  // 2. Determine appropriate visualization approach
+  const vizApproach = {
+    type: 'decisionTree',
+    library: 'D3',
+    structure: treeData
+  };
+  
+  // 3. Generate the tree visualization code
+  const treeCode = await generateTreeVisualization(vizApproach);
+  
+  // 4. Create explanation for the decision tree
+  const explanation = generateDecisionTreeExplanation(treeData);
+  
+  // 5. Combine visualization and explanation
+  return {
+    visualization: {
+      code: treeCode,
+      params: treeData
+    },
+    explanation: explanation
+  };
+}
+
+function extractDecisionTreeData(request) {
+  // Extract the decision tree structure from natural language
+  // This would use the LLM to parse the request
+  
+  // Example structure for a simple decision tree
+  return {
+    name: "Subscription Length",
+    type: "decision",
+    edgeLabel: "",
+    children: [
+      {
+        name: ">12 months",
+        type: "decision",
+        edgeLabel: ">12 months",
+        children: [
+          {
+            name: "Low Risk",
+            type: "leaf",
+            edgeLabel: "≤5 tickets",
+            value: 0.2
+          },
+          {
+            name: "Medium Risk",
+            type: "leaf",
+            edgeLabel: ">5 tickets",
+            value: 0.4
+          }
+        ]
+      },
+      {
+        name: "≤12 months",
+        type: "decision",
+        edgeLabel: "≤12 months",
+        children: [
+          {
+            name: "Medium Risk",
+            type: "leaf",
+            edgeLabel: "≤5 tickets",
+            value: 0.5
+          },
+          {
+            name: "High Risk",
+            type: "leaf",
+            edgeLabel: ">5 tickets",
+            value: 0.8
+          }
+        ]
+      }
+    ]
+  };
+}
+```
+
+## Optimization Guidelines for Generated Code
+
+When generating visualizations, apply these optimization principles:
+
+1. **Memoization**: Cache computed values and avoid unnecessary recalculations
+2. **Virtualization**: For large datasets, only render visible elements
+3. **Lazy Loading**: Load visualization components only when needed
+4. **Data Decimation**: For large datasets, sample points intelligently
+5. **WebGL Acceleration**: Use hardware acceleration for complex visualizations
+
+Example optimization for a large dataset visualization:
+
+```javascript
+// Before optimization
+const AllDataPoints = ({ data }) => {
+  return (
+    <g>
+      {data.map((point, i) => (
+        <circle key={i} cx={point.x} cy={point.y} r={3} />
+      ))}
+    </g>
+  );
+};
+
+// After optimization
+const OptimizedDataPoints = ({ data, viewport }) => {
+  // Only process points that could be in the viewport
+  const visiblePoints = useMemo(() => {
+    return data.filter(point => 
+      point.x >= viewport.minX && point.x <= viewport.maxX &&
+      point.y >= viewport.minY && point.y <= viewport.maxY
+    );
+  }, [data, viewport]);
+  
+  // Decimate points if there are too many
+  const displayPoints = useMemo(() => {
+    if (visiblePoints.length > 1000) {
+      return decimatePoints(visiblePoints, 1000);
+    }
+    return visiblePoints;
+  }, [visiblePoints]);
+  
+  return (
+    <g>
+      {displayPoints.map((point, i) => (
+        <circle key={i} cx={point.x} cy={point.y} r={3} />
+      ))}
+    </g>
+  );
+};
+```
+
+## Response Templates for Different Visualization Types
+
+Your agent should structure responses consistently. Here are templates for different visualization scenarios:
+
+### Standard Built-in Visualization
+
+```
+I'll create a visualization of [MATH CONCEPT]. This is a [VISUALIZATION TYPE] that will help illustrate [KEY MATHEMATICAL PRINCIPLE].
+
+[BRIEF EXPLANATION OF THE MATH CONCEPT]
+
+Here's an interactive visualization:
+
+[VISUALIZATION ARTIFACT]
+
+You can [INTERACTION INSTRUCTIONS] to explore different aspects of this concept.
+
+[ADDITIONAL MATHEMATICAL INSIGHTS OR EXPLANATIONS]
+
+Is there a specific aspect of this visualization you'd like me to explain in more detail?
+```
+
+### Dynamically Generated Visualization
+
+```
+I'll create a visualization of [MATH CONCEPT]. This requires a [VISUALIZATION TYPE] visualization, which I'll generate specifically for this concept.
+
+[BRIEF EXPLANATION OF THE MATH CONCEPT]
+
+Here's an interactive visualization I've created for this purpose:
+
+[VISUALIZATION ARTIFACT]
+
+This visualization uses [LIBRARY] to represent [KEY ELEMENTS]. You can [INTERACTION INSTRUCTIONS] to explore different aspects.
+
+[EXPLANATION OF HOW THE VISUALIZATION REPRESENTS THE MATH CONCEPT]
+
+Would you like me to explain any specific aspect of this visualization in more detail?
+```
+
+### Complex Multi-part Visualization
+
+```
+To properly visualize [MATH CONCEPT], I'll create a multi-part visualization that shows [KEY ASPECTS].
+
+[CONCEPTUAL EXPLANATION]
+
+Here's the first visualization showing [ASPECT 1]:
+
+[VISUALIZATION ARTIFACT 1]
+
+And here's the second visualization showing [ASPECT 2]:
+
+[VISUALIZATION ARTIFACT 2]
+
+These visualizations complement each other by [RELATIONSHIP EXPLANATION].
+
+You can [INTERACTION INSTRUCTIONS] in both visualizations to explore how the different aspects relate.
+
+[MATHEMATICAL INSIGHTS FROM COMPARING THE VISUALIZATIONS]
+
+Would you like me to focus on any particular aspect of these visualizations?
+```
+
+## Examples of Dynamic Visualization Types
+
+Be prepared to generate these common visualization types that might not be built-in:
+
+1. **Decision Trees**: Hierarchical decision models
+2. **Force-Directed Graphs**: Network visualizations with physics
+3. **Voronoi Diagrams**: Space partitioning visualizations
+4. **Markov Chain Models**: State transition diagrams
+5. **Fractal Visualizations**: Self-similar mathematical structures
+6. **Chaos Attractors**: Dynamical systems visualizations
+7. **Probability Distributions**: Custom statistical visualizations
+8. **Group Theory Visualizations**: Symmetry and transformation graphics
+9. **Turing Machine Simulations**: Computational process visualizations
+10. **Differential Equation Phase Portraits**: Dynamic system behavior plots
+
+## Implementation Strategy
+
+1. **Start with Core Math Types**: Ensure excellence in fundamental math visualizations first
+2. **Build the Dynamic Framework**: Add the ability to generate new visualization types
+3. **Create a Registry System**: Store and reuse dynamically generated visualizations
+4. **Add Optimization Layer**: Ensure performance even for complex visualizations
+5. **Implement Educational Layer**: Enhance visualizations with explanations
+
+By following this guide, your agent will be able to dynamically create visualizations for any mathematical concept, even if it wasn't explicitly implemented beforehand.

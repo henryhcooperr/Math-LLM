@@ -1,0 +1,950 @@
+# LLM Integration Guide: Math Visualization Conversational System
+
+This guide outlines how to integrate an advanced Large Language Model (LLM) into your math visualization system to create a seamless, conversational experience that generates interactive mathematical visualizations.
+
+## System Architecture
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND APPLICATION                           │
+│                                                                       │
+│ ┌───────────────┐    ┌──────────────────┐    ┌─────────────────────┐  │
+│ │               │    │                  │    │                     │  │
+│ │ User Interface│◄───┤ Response Manager ◄────┤ Visualization       │  │
+│ │               │    │                  │    │ Generator           │  │
+│ └───────┬───────┘    └──────┬───────────┘    └─────────┬───────────┘  │
+│         │                   │                          │              │
+│         ▼                   ▼                          │              │
+│ ┌───────────────┐    ┌──────────────────┐              │              │
+│ │               │    │                  │              │              │
+│ │ Input Processor├───►  LLM Connector   ├──────────────┘              │
+│ │               │    │                  │                             │
+│ └───────────────┘    └──────────────────┘                             │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                       ┌─────────────────────────┐
+                       │                         │
+                       │     External LLM API    │
+                       │    (OpenAI or Claude)   │
+                       │                         │
+                       └─────────────────────────┘
+```
+
+## Key Components
+
+### 1. External LLM API
+
+Your system requires integration with a powerful external LLM like OpenAI's GPT-4 or Anthropic's Claude 3:
+
+**Requirements:**
+- API Key management and secure storage
+- Rate limiting and retry logic
+- Response validation and error handling
+- Cost tracking and optimization
+- Context management for multi-turn conversations
+
+**Recommended Models:**
+- **OpenAI GPT-4**: Higher reasoning capability for complex math
+- **Anthropic Claude 3**: Strong step-by-step reasoning
+- **PaLM 2**: Alternative with strong mathematical capabilities
+
+### 2. LLM Connector
+
+This component handles communication with the external LLM:
+
+```javascript
+// Example LLM Connector implementation
+class LLMConnector {
+  constructor(apiKey, model = 'gpt-4') {
+    this.apiKey = apiKey;
+    this.model = model;
+    this.baseUrl = 'https://api.openai.com/v1/chat/completions';
+    this.headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+  }
+
+  async processQuery(query, conversationContext, visualizationNeeded = true) {
+    // Construct the prompt based on query type and context
+    const prompt = this.constructPrompt(query, conversationContext, visualizationNeeded);
+    
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          model: this.model,
+          messages: prompt,
+          temperature: 0.2, // Lower temperature for more deterministic math responses
+          max_tokens: 2048,
+          response_format: { type: "json_object" }
+        })
+      });
+      
+      const data = await response.json();
+      
+      // Parse the structured response
+      return this.parseResponse(data.choices[0].message.content);
+    } catch (error) {
+      console.error('Error calling LLM API:', error);
+      throw new Error('Failed to process math query');
+    }
+  }
+  
+  constructPrompt(query, context, visualizationNeeded) {
+    // Build system prompt with appropriate instructions
+    const systemPrompt = {
+      role: 'system',
+      content: `You are a math visualization assistant that explains concepts clearly and provides parameters for interactive visualizations. ${visualizationNeeded ? 'Always include structured visualization parameters in your response.' : ''} Respond in JSON format with sections for explanation, visualizationParams, and educationalContent.`
+    };
+    
+    // Add conversation history for context
+    const messages = [systemPrompt];
+    
+    if (context && context.history) {
+      messages.push(...context.history);
+    }
+    
+    // Add current query
+    messages.push({
+      role: 'user',
+      content: query
+    });
+    
+    return messages;
+  }
+  
+  parseResponse(responseText) {
+    try {
+      // Parse JSON response
+      const parsed = JSON.parse(responseText);
+      
+      // Validate required fields
+      if (!parsed.explanation) {
+        throw new Error('Missing explanation in LLM response');
+      }
+      
+      return {
+        explanation: parsed.explanation,
+        visualizationParams: parsed.visualizationParams || null,
+        educationalContent: parsed.educationalContent || null,
+        followUpQuestions: parsed.followUpQuestions || []
+      };
+    } catch (error) {
+      console.error('Error parsing LLM response:', error);
+      throw new Error('Failed to parse math response');
+    }
+  }
+}
+```
+
+### 3. Input Processor
+
+This component handles different types of input and prepares them for LLM processing:
+
+```javascript
+class InputProcessor {
+  constructor(llmConnector) {
+    this.llmConnector = llmConnector;
+    this.mathOCR = new MathOCRService(); // Service for processing math images
+  }
+  
+  async processInput(input, context) {
+    // Determine input type
+    if (input.type === 'text') {
+      return this.processTextInput(input.content, context);
+    } else if (input.type === 'image') {
+      return this.processImageInput(input.content, context);
+    } else {
+      throw new Error('Unsupported input type');
+    }
+  }
+  
+  async processTextInput(text, context) {
+    // Preprocess text
+    const processed = this.preprocessMathText(text);
+    
+    // Send to LLM
+    return this.llmConnector.processQuery(processed, context);
+  }
+  
+  async processImageInput(imageData, context) {
+    // Extract mathematical content from image
+    const extractedContent = await this.mathOCR.extractMath(imageData);
+    
+    // Create a prompt describing the image content
+    const imagePrompt = `I've uploaded an image containing the following mathematical content: ${extractedContent}. Please explain this concept and provide an interactive visualization.`;
+    
+    // Send to LLM
+    return this.llmConnector.processQuery(imagePrompt, context);
+  }
+  
+  preprocessMathText(text) {
+    // Clean up and format math expressions
+    // Replace common ASCII math with proper notation
+    return text
+      .replace(/\^\d+/g, match => `^{${match.substring(1)}}`) // Convert x^2 to x^{2}
+      .replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}'); // Convert 1/2 to \frac{1}{2}
+  }
+}
+```
+
+### 4. Visualization Generator
+
+This component converts LLM outputs into interactive visualizations:
+
+```javascript
+class VisualizationGenerator {
+  constructor() {
+    this.libraryRegistry = {
+      'mafs': MafsVisualizer,
+      'mathbox': MathBoxVisualizer,
+      'threejs': ThreeJSVisualizer,
+      'jsxgraph': JSXGraphVisualizer,
+      'd3': D3Visualizer
+      // Add more libraries as needed
+    };
+  }
+  
+  generateVisualization(visualizationParams) {
+    // Validate parameters
+    if (!visualizationParams || !visualizationParams.type) {
+      throw new Error('Invalid visualization parameters');
+    }
+    
+    // Select appropriate library
+    const library = this.selectLibrary(visualizationParams);
+    
+    // Generate artifact configuration
+    const artifactConfig = this.createArtifactConfig(visualizationParams, library);
+    
+    // Return artifact details
+    return {
+      type: 'artifact',
+      library: library,
+      config: artifactConfig
+    };
+  }
+  
+  selectLibrary(params) {
+    // If LLM specified a library, try to use it
+    if (params.recommendedLibrary && 
+        this.libraryRegistry[params.recommendedLibrary.toLowerCase()]) {
+      return params.recommendedLibrary.toLowerCase();
+    }
+    
+    // Otherwise select based on visualization type
+    switch (params.type) {
+      case 'function2D':
+        return 'mafs';
+      case 'function3D':
+        return 'mathbox';
+      case 'geometry':
+        return 'jsxgraph';
+      case 'vectorField':
+        return params.dimensionality === '3D' ? 'mathbox' : 'mafs';
+      case 'dataVisualization':
+        return 'd3';
+      default:
+        return 'jsxgraph'; // Default fallback
+    }
+  }
+  
+  createArtifactConfig(params, library) {
+    // Base configuration
+    const config = {
+      id: `math-viz-${Date.now()}`,
+      type: this.getArtifactType(library),
+      title: params.title || 'Mathematical Visualization',
+      code: this.generateCode(params, library)
+    };
+    
+    return config;
+  }
+  
+  getArtifactType(library) {
+    // Map library to artifact type
+    const artifactTypeMap = {
+      'mafs': 'application/vnd.ant.react',
+      'mathbox': 'application/vnd.ant.react',
+      'threejs': 'application/vnd.ant.react',
+      'jsxgraph': 'application/vnd.ant.react',
+      'd3': 'application/vnd.ant.react'
+    };
+    
+    return artifactTypeMap[library] || 'application/vnd.ant.code';
+  }
+  
+  generateCode(params, library) {
+    // Generate library-specific code
+    switch (library) {
+      case 'mafs':
+        return this.generateMafsCode(params);
+      case 'mathbox':
+        return this.generateMathBoxCode(params);
+      case 'jsxgraph':
+        return this.generateJSXGraphCode(params);
+      // Add more cases for other libraries
+      default:
+        return this.generateFallbackCode(params);
+    }
+  }
+  
+  // Library-specific code generators
+  generateMafsCode(params) {
+    // Example for generating Mafs visualization code
+    // This would be much more extensive in a real implementation
+    if (params.type === 'function2D') {
+      return `
+import React from 'react';
+import { Mafs, Coordinates, Plot, Theme } from 'mafs';
+
+const MathVisualization = () => {
+  // Parse function from expression
+  const f = (x) => {
+    try {
+      // This is simplified - use a proper math parser in production
+      return eval('x => ' + ${JSON.stringify(params.expression)})
+    } catch (e) {
+      console.error('Error parsing function:', e);
+      return x => 0;
+    }
+  };
+  
+  return (
+    <div style={{ width: '100%', height: '400px' }}>
+      <Mafs
+        viewBox={{ x: ${JSON.stringify(params.domain || [-5, 5])}, y: ${JSON.stringify(params.range || [-5, 5])} }}
+      >
+        <Coordinates />
+        <Plot.OfX y={f} color={Theme.blue} />
+      </Mafs>
+    </div>
+  );
+};
+
+export default MathVisualization;`;
+    }
+    
+    // Add more type-specific code generators
+    return 'console.log("Unsupported visualization type");';
+  }
+  
+  // Add more library-specific code generators
+}
+```
+
+### 5. Response Manager
+
+This component orchestrates the overall conversation flow:
+
+```javascript
+class ResponseManager {
+  constructor(inputProcessor, visualizationGenerator) {
+    this.inputProcessor = inputProcessor;
+    this.visualizationGenerator = visualizationGenerator;
+    this.conversationHistory = [];
+  }
+  
+  async processUserInput(input) {
+    // Create context from conversation history
+    const context = {
+      history: this.conversationHistory
+    };
+    
+    // Process input and get LLM response
+    const llmResponse = await this.inputProcessor.processInput(input, context);
+    
+    // Generate visualization if parameters are provided
+    let visualization = null;
+    if (llmResponse.visualizationParams) {
+      visualization = this.visualizationGenerator.generateVisualization(
+        llmResponse.visualizationParams
+      );
+    }
+    
+    // Format educational content
+    const educationalContent = this.formatEducationalContent(
+      llmResponse.educationalContent
+    );
+    
+    // Update conversation history
+    this.updateConversationHistory(input, llmResponse);
+    
+    // Return formatted response
+    return {
+      explanation: llmResponse.explanation,
+      visualization: visualization,
+      educationalContent: educationalContent,
+      followUpQuestions: llmResponse.followUpQuestions
+    };
+  }
+  
+  formatEducationalContent(content) {
+    if (!content) return null;
+    
+    // Format content for display
+    return {
+      title: content.title || 'Mathematical Concept',
+      summary: content.summary || '',
+      steps: content.steps || [],
+      keyInsights: content.keyInsights || [],
+      exercises: content.exercises || []
+    };
+  }
+  
+  updateConversationHistory(input, response) {
+    // Add user input to history
+    this.conversationHistory.push({
+      role: 'user',
+      content: typeof input === 'string' ? input : input.content
+    });
+    
+    // Add assistant response to history
+    this.conversationHistory.push({
+      role: 'assistant',
+      content: JSON.stringify({
+        explanation: response.explanation,
+        visualizationParams: response.visualizationParams
+      })
+    });
+    
+    // Trim history if it gets too long
+    if (this.conversationHistory.length > 10) {
+      this.conversationHistory = this.conversationHistory.slice(-10);
+    }
+  }
+}
+```
+
+## LLM Prompt Engineering
+
+The quality of your visualizations depends heavily on effective prompt engineering. Here are key prompt strategies:
+
+### Base System Prompt Template
+
+```
+You are a math visualization assistant that explains concepts clearly and provides parameters for interactive visualizations. 
+
+Your task is to:
+1. Analyze the mathematical concept in the user's query
+2. Provide a clear, conversational explanation
+3. Generate precise parameters for visualization
+4. Create educational content with step-by-step explanations
+
+ALWAYS structure your response as a valid JSON object with these fields:
+{
+  "explanation": "Conversational explanation of the concept",
+  "visualizationParams": {
+    "type": "function2D|function3D|geometry|vectorField|...",
+    "title": "Title for the visualization",
+    "expression": "Mathematical expression in JavaScript syntax",
+    "domain": [min, max],
+    "range": [min, max],
+    "recommendedLibrary": "mafs|mathbox|jsxgraph|...",
+    // Type-specific parameters...
+  },
+  "educationalContent": {
+    "title": "Concept title",
+    "summary": "Brief summary",
+    "steps": [
+      {"title": "Step 1", "content": "Explanation of step 1"},
+      // More steps...
+    ],
+    "keyInsights": ["Insight 1", "Insight 2", ...],
+    "exercises": [
+      {"question": "Question text", "solution": "Solution explanation"}
+      // More exercises...
+    ]
+  },
+  "followUpQuestions": ["Related question 1?", "Related question 2?", ...]
+}
+
+For visualization parameters, be precise and use JavaScript syntax for expressions. For example, use "Math.sin(x)" instead of "sin(x)" and "x**2" for x².
+```
+
+### Function2D Prompt Template
+
+```
+[BASE SYSTEM PROMPT]
+
+For function2D visualizations, include these additional parameters:
+- "expression": JavaScript function expression (e.g., "Math.sin(x) * Math.exp(-0.1 * x * x)")
+- "domain": x-axis range as [min, max]
+- "range": y-axis range as [min, max]
+- "specialPoints": array of points to highlight, e.g.,
+  [
+    {"x": value, "y": value, "label": "name", "description": "explanation"}
+  ]
+- "recommendedLibrary": "mafs" (preferred for 2D functions)
+
+Example for quadratic function:
+{
+  "visualizationParams": {
+    "type": "function2D",
+    "title": "Quadratic Function",
+    "expression": "x**2 - 3*x + 2",
+    "domain": [-2, 4],
+    "range": [-1, 5],
+    "specialPoints": [
+      {"x": 1, "y": 0, "label": "zero", "description": "x-intercept at x=1"},
+      {"x": 2, "y": 0, "label": "zero", "description": "x-intercept at x=2"},
+      {"x": 1.5, "y": -0.25, "label": "vertex", "description": "Minimum point"}
+    ],
+    "recommendedLibrary": "mafs"
+  }
+}
+```
+
+### Function3D Prompt Template
+
+```
+[BASE SYSTEM PROMPT]
+
+For function3D visualizations, include these additional parameters:
+- "expression": JavaScript function of two variables (e.g., "Math.sin(x) * Math.cos(y)")
+- "domainX": x-axis range as [min, max]
+- "domainY": y-axis range as [min, max]
+- "range": z-axis range as [min, max]
+- "resolution": grid resolution (typically 64)
+- "colormap": color scheme ("rainbow", "thermal", etc.)
+- "recommendedLibrary": "mathbox" (preferred for 3D functions)
+
+Example for a paraboloid:
+{
+  "visualizationParams": {
+    "type": "function3D",
+    "title": "Paraboloid",
+    "expression": "x**2 + y**2",
+    "domainX": [-3, 3],
+    "domainY": [-3, 3],
+    "range": [0, 10],
+    "resolution": 64,
+    "colormap": "thermal",
+    "recommendedLibrary": "mathbox"
+  }
+}
+```
+
+### Geometry Prompt Template
+
+```
+[BASE SYSTEM PROMPT]
+
+For geometry visualizations, include these additional parameters:
+- "elements": array of geometric elements, each with:
+  - "type": "point|line|circle|polygon|..."
+  - "id": unique identifier
+  - "label": display label
+  - Type-specific properties (coordinates, radius, etc.)
+- "constructions": array of geometric constructions
+- "recommendedLibrary": "jsxgraph" (preferred for geometry)
+
+Example for triangle:
+{
+  "visualizationParams": {
+    "type": "geometry",
+    "title": "Right Triangle",
+    "elements": [
+      {"type": "point", "id": "A", "label": "A", "coordinates": [0, 0]},
+      {"type": "point", "id": "B", "label": "B", "coordinates": [4, 0]},
+      {"type": "point", "id": "C", "label": "C", "coordinates": [0, 3]},
+      {"type": "polygon", "id": "triangle", "vertices": ["A", "B", "C"]}
+    ],
+    "recommendedLibrary": "jsxgraph"
+  }
+}
+```
+
+### Image Input Prompt Template
+
+```
+[BASE SYSTEM PROMPT]
+
+The user has uploaded an image containing mathematical content that has been extracted and is described as follows:
+
+{extracted_content}
+
+Analyze this mathematical content and provide:
+1. An interpretation of what this represents
+2. A clear explanation of the concept
+3. Parameters for creating an improved, interactive visualization
+
+Remember to structure your response as a valid JSON object as specified.
+```
+
+## Response Parsing and Validation
+
+Implement robust parsing and validation to handle LLM responses:
+
+```javascript
+function parseLLMResponse(responseText) {
+  // Try to parse the JSON
+  let parsed;
+  try {
+    parsed = JSON.parse(responseText);
+  } catch (e) {
+    // Handle case where response isn't valid JSON
+    console.error('Failed to parse LLM response as JSON:', e);
+    
+    // Try to extract JSON from markdown or text
+    const jsonMatch = responseText.match(/```json([\s\S]*?)```|({[\s\S]*})/);
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[1] || jsonMatch[2]);
+      } catch (e2) {
+        throw new Error('Could not parse response as JSON');
+      }
+    } else {
+      throw new Error('Response does not contain valid JSON');
+    }
+  }
+  
+  // Validate required fields
+  const requiredFields = ['explanation'];
+  for (const field of requiredFields) {
+    if (!parsed[field]) {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
+  
+  // Validate visualization parameters if present
+  if (parsed.visualizationParams) {
+    validateVisualizationParams(parsed.visualizationParams);
+  }
+  
+  return parsed;
+}
+
+function validateVisualizationParams(params) {
+  // Check required fields for all visualizations
+  if (!params.type) {
+    throw new Error('Visualization missing required type');
+  }
+  
+  // Type-specific validation
+  switch (params.type) {
+    case 'function2D':
+      if (!params.expression) {
+        throw new Error('function2D missing required expression');
+      }
+      break;
+    case 'function3D':
+      if (!params.expression) {
+        throw new Error('function3D missing required expression');
+      }
+      break;
+    case 'geometry':
+      if (!params.elements || !Array.isArray(params.elements)) {
+        throw new Error('geometry missing required elements array');
+      }
+      break;
+    // Add cases for other types
+  }
+  
+  return true;
+}
+```
+
+## Error Handling and Fallbacks
+
+Implement robust error handling and fallbacks:
+
+```javascript
+class ErrorHandler {
+  constructor() {
+    this.fallbackVisualizations = {
+      'function2D': this.getFallbackFunction2D,
+      'function3D': this.getFallbackFunction3D,
+      'geometry': this.getFallbackGeometry
+      // Add more fallbacks
+    };
+  }
+  
+  handleVisualizationError(error, originalParams, type) {
+    console.error(`Visualization error (${type}):`, error);
+    
+    // Log error for analysis
+    this.logError(error, originalParams);
+    
+    // Get fallback visualization
+    return this.getFallbackVisualization(type);
+  }
+  
+  getFallbackVisualization(type) {
+    // Get appropriate fallback generator
+    const fallbackGenerator = this.fallbackVisualizations[type] || this.getFallbackGeneric;
+    
+    // Generate fallback visualization
+    return fallbackGenerator();
+  }
+  
+  getFallbackFunction2D() {
+    // Simple parabola as fallback
+    return {
+      type: 'function2D',
+      title: 'Example Function',
+      expression: 'x**2',
+      domain: [-5, 5],
+      range: [0, 25],
+      recommendedLibrary: 'mafs'
+    };
+  }
+  
+  getFallbackFunction3D() {
+    // Simple 3D function as fallback
+    return {
+      type: 'function3D',
+      title: 'Example 3D Function',
+      expression: 'Math.sin(x) * Math.cos(y)',
+      domainX: [-3, 3],
+      domainY: [-3, 3],
+      range: [-1, 1],
+      recommendedLibrary: 'mathbox'
+    };
+  }
+  
+  getFallbackGeometry() {
+    // Simple triangle as fallback
+    return {
+      type: 'geometry',
+      title: 'Example Triangle',
+      elements: [
+        {type: 'point', id: 'A', coordinates: [0, 0]},
+        {type: 'point', id: 'B', coordinates: [1, 0]},
+        {type: 'point', id: 'C', coordinates: [0, 1]},
+        {type: 'polygon', id: 'triangle', vertices: ['A', 'B', 'C']}
+      ],
+      recommendedLibrary: 'jsxgraph'
+    };
+  }
+  
+  logError(error, params) {
+    // Log error for analysis and improvement
+    // In a production system, send to error tracking service
+    console.error('Visualization generation error:', {
+      error: error.message,
+      stack: error.stack,
+      params: JSON.stringify(params)
+    });
+  }
+}
+```
+
+## Sample Conversation Flow
+
+Here's an example of the complete flow from input to visualization:
+
+1. **User Input**: "Explain the relationship between sine and cosine functions"
+
+2. **Input Processing**:
+   - Detect math-related query
+   - Format for LLM
+
+3. **LLM Prompt**:
+   ```
+   [SYSTEM PROMPT]
+   
+   User query: "Explain the relationship between sine and cosine functions"
+   ```
+
+4. **LLM Response**:
+   ```json
+   {
+     "explanation": "Sine and cosine functions are fundamental trigonometric functions with a beautiful geometric relationship. They are essentially the same function, just shifted by π/2 radians (or 90 degrees). Mathematically, cos(x) = sin(x + π/2). Another way to understand their relationship is through the unit circle: for any angle θ, sin(θ) gives the y-coordinate and cos(θ) gives the x-coordinate of the point on the unit circle corresponding to that angle.",
+     
+     "visualizationParams": {
+       "type": "function2D",
+       "title": "Sine and Cosine Functions",
+       "functions": [
+         {"expression": "Math.sin(x)", "label": "sin(x)", "color": "#4285F4"},
+         {"expression": "Math.cos(x)", "label": "cos(x)", "color": "#EA4335"}
+       ],
+       "domain": [-6.28, 6.28],
+       "range": [-1.5, 1.5],
+       "gridLines": true,
+       "xLabel": "x (radians)",
+       "yLabel": "y",
+       "specialPoints": [
+         {"x": 0, "y": 0, "label": "Origin"},
+         {"x": 1.57, "y": 1, "label": "sin(π/2) = 1"},
+         {"x": 0, "y": 1, "label": "cos(0) = 1"}
+       ],
+       "recommendedLibrary": "mafs"
+     },
+     
+     "educationalContent": {
+       "title": "The Relationship Between Sine and Cosine",
+       "summary": "Sine and cosine are complementary functions related through the unit circle and a phase shift of π/2.",
+       "steps": [
+         {
+           "title": "Unit Circle Representation",
+           "content": "On the unit circle, cos(θ) is the x-coordinate and sin(θ) is the y-coordinate of the point at angle θ."
+         },
+         {
+           "title": "Phase Shift Relationship",
+           "content": "Cosine is the same as sine, but shifted by π/2: cos(x) = sin(x + π/2)."
+         },
+         {
+           "title": "Pythagorean Identity",
+           "content": "They satisfy the fundamental identity: sin²(θ) + cos²(θ) = 1."
+         }
+       ],
+       "keyInsights": [
+         "Sine and cosine have the same shape and amplitude, just shifted horizontally",
+         "When sine reaches its maximum, cosine is at zero, and vice versa",
+         "The functions are periodic with period 2π (360 degrees)"
+       ]
+     },
+     
+     "followUpQuestions": [
+       "How are sine and cosine related to the tangent function?",
+       "Can you show me the unit circle representation?",
+       "What is the phase shift relationship between sine and cosine?"
+     ]
+   }
+   ```
+
+5. **Visualization Generation**:
+   - Parse visualization parameters
+   - Select Mafs library based on recommendation
+   - Generate React component code:
+
+```jsx
+import React, { useState } from 'react';
+import { Mafs, Coordinates, Plot, Point, Label, Theme } from 'mafs';
+
+const TrigFunctionsVisualizer = () => {
+  const [showLabels, setShowLabels] = useState(true);
+  
+  const sinFunction = (x) => Math.sin(x);
+  const cosFunction = (x) => Math.cos(x);
+  
+  return (
+    <div className="visualization-container">
+      <h3>Sine and Cosine Functions</h3>
+      
+      <div className="controls">
+        <label>
+          <input 
+            type="checkbox" 
+            checked={showLabels} 
+            onChange={() => setShowLabels(!showLabels)}
+          />
+          Show key points
+        </label>
+      </div>
+      
+      <Mafs
+        viewBox={{ x: [-6.28, 6.28], y: [-1.5, 1.5] }}
+        width={600}
+        height={400}
+      >
+        <Coordinates xLabel="x (radians)" yLabel="y" />
+        
+        {/* Plot sine function */}
+        <Plot.OfX y={sinFunction} color={Theme.blue} />
+        
+        {/* Plot cosine function */}
+        <Plot.OfX y={cosFunction} color={Theme.red} />
+        
+        {/* Special points */}
+        {showLabels && (
+          <>
+            <Point x={0} y={0} color={Theme.purple} />
+            <Label x={0} y={0} size={20}>Origin</Label>
+            
+            <Point x={Math.PI/2} y={1} color={Theme.blue} />
+            <Label x={Math.PI/2} y={1} size={20}>sin(π/2) = 1</Label>
+            
+            <Point x={0} y={1} color={Theme.red} />
+            <Label x={0} y={1} size={20}>cos(0) = 1</Label>
+          </>
+        )}
+      </Mafs>
+      
+      <div className="legend">
+        <div className="legend-item">
+          <span className="color-box" style={{backgroundColor: '#4285F4'}}></span>
+          <span>sin(x)</span>
+        </div>
+        <div className="legend-item">
+          <span className="color-box" style={{backgroundColor: '#EA4335'}}></span>
+          <span>cos(x)</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TrigFunctionsVisualizer;
+```
+
+6. **Response Assembly**:
+   - Combine explanation text
+   - Include visualization artifact
+   - Format educational content
+   - Present follow-up questions
+
+7. **Display to User**:
+   - Render the conversation interface
+   - Embed the interactive visualization
+   - Show educational content
+   - Provide interaction options
+
+## Performance Optimization
+
+Optimize your LLM integration for responsiveness:
+
+1. **Streaming Responses**: Implement streaming to show text as it's generated
+2. **Parallel Processing**: Generate visualizations while text is being shown
+3. **Caching**: Cache common math concept explanations and visualizations
+4. **Progressive Loading**: Show simple visualizations first, then enhance
+5. **Optimize Prompt Length**: Keep prompts concise to reduce token usage
+
+## Testing and Debugging
+
+Implement effective testing strategies:
+
+1. **Unit Tests**: Test individual components with mock LLM responses
+2. **Integration Tests**: Test the full pipeline with sample math concepts
+3. **Prompt Testing**: Create a test suite of different math problems
+4. **Visualization Validation**: Verify rendering across different screen sizes
+5. **Error Recovery Testing**: Ensure system handles LLM failures gracefully
+
+## Ethics and Responsible Use
+
+Consider these ethical aspects:
+
+1. **Attribution**: Credit original sources for mathematical concepts
+2. **Educational Focus**: Ensure explanations promote understanding, not just answers
+3. **Accessibility**: Make visualizations work with screen readers and keyboard navigation
+4. **Bias Monitoring**: Check for bias in mathematical explanations
+5. **Privacy**: Handle user data responsibly and securely
+
+## Implementation Roadmap
+
+Phase the implementation of LLM integration:
+
+### Phase 1: Basic Integration
+- Connect to external LLM
+- Implement structured prompting
+- Create simple visualization generation
+- Build basic conversation UI
+
+### Phase 2: Enhanced Understanding
+- Add image input support
+- Implement step-by-step explanations
+- Create more sophisticated visualizations
+- Add interactive elements to visualizations
+
+### Phase 3: Advanced Features
+- Implement educational content generation
+- Add personalization based on user level
+- Create a wider variety of visualization types
+- Optimize performance and responsiveness
+
+By following this guide, you'll be able to create a seamless, immersive math visualization experience powered by a sophisticated LLM that can explain concepts clearly while generating interactive visualizations.

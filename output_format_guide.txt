@@ -1,1379 +1,640 @@
-# Library Integration Guide: Math Visualization System
+# Output Format Guide: Math Visualization System
 
-This guide provides detailed implementation patterns for each library in the awesome-interactive-math collection, focusing on how to integrate them into your visualization system.
+This guide defines the standardized format for data exchange between the LLM component and the visualization system, ensuring consistent, accurate, and useful visualization generation.
 
-## Library Selection Decision Tree
+## JSON Response Format
 
-```
-START
-├── Is the visualization for a React application?
-│   ├── YES
-│   │   ├── Is it a 2D function or coordinate system?
-│   │   │   ├── YES -> Use Mafs
-│   │   │   └── NO
-│   │   ├── Is it an interactive educational video?
-│   │   │   ├── YES -> Use Liqvid
-│   │   │   └── NO -> Consider other React-compatible options
-│   └── NO -> Continue
-├── What is the primary visualization type?
-│   ├── 2D Function plotting
-│   │   ├── Is it for education/classroom use?
-│   │   │   ├── YES -> Use Desmos API or GeoGebra
-│   │   │   └── NO
-│   │   ├── Does it require geometric constructions?
-│   │   │   ├── YES -> Use JSXGraph
-│   │   │   └── NO
-│   │   ├── Is it data-driven or needs customization?
-│   │   │   ├── YES -> Use D3.js
-│   │   │   └── NO -> Use JSXGraph or p5.js
-│   ├── 3D Visualization
-│   │   ├── Is it specifically for mathematical concepts?
-│   │   │   ├── YES
-│   │   │   │   ├── Needs presentation quality?
-│   │   │   │   │   ├── YES -> Use MathBox (PREFERRED)
-│   │   │   │   │   └── NO -> Use Grafar
-│   │   │   └── NO -> Use Three.js
-│   ├── Geometry
-│   │   ├── Is it specifically Euclidean geometry?
-│   │   │   ├── YES -> Use Euclid JS
-│   │   │   └── NO
-│   │   ├── Needs advanced interactive features?
-│   │   │   ├── YES -> Use CindyJS
-│   │   │   └── NO -> Use JSXGraph
-│   ├── Educational Experience
-│   │   ├── Creating a complete course?
-│   │   │   ├── YES -> Use Mathigon
-│   │   │   └── NO
-│   │   ├── Interactive notebooks/explorations?
-│   │   │   ├── YES -> Use Observable
-│   │   │   └── NO
-│   ├── Creative/Artistic Visualization
-│   │   ├── Animation focused?
-│   │   │   ├── YES -> Use p5.js
-│   │   │   └── NO -> Use pts.js
-│   ├── Statistical/Data Analysis
-│   │   ├── Using R?
-│   │   │   ├── YES -> Use Shiny
-│   │   │   └── NO -> Use D3.js
-END
-```
+All communications between the LLM and the visualization system use a standardized JSON structure:
 
-## Integration Patterns by Library
-
-### 1. MathBox
-
-MathBox is exceptional for mathematical visualization, especially in 3D. It provides a declarative API built on Three.js.
-
-#### Basic Integration Pattern
-
-```javascript
-// MathBox wrapper component for visualization system
-export class MathBoxVisualizer extends Component {
-  constructor(props) {
-    super(props);
-    this.containerRef = React.createRef();
-    this.mathbox = null;
-    this.three = null;
-  }
-  
-  componentDidMount() {
-    // Create mathbox instance
-    this.mathbox = mathBox({
-      plugins: ['core', 'controls', 'cursor'],
-      controls: {
-        klass: THREE.OrbitControls
-      },
-      element: this.containerRef.current
-    });
-    
-    this.three = this.mathbox.three;
-    
-    // Set up renderer
-    this.three.renderer.setClearColor(new THREE.Color(this.props.backgroundColor || '#FFFFFF'), 1.0);
-    this.three.renderer.setPixelRatio(window.devicePixelRatio);
-    
-    // Create initial scene
-    this.setupScene(this.props);
-  }
-  
-  componentDidUpdate(prevProps) {
-    // Check if we need to update the visualization
-    if (this.needsUpdate(prevProps, this.props)) {
-      this.updateVisualization(this.props);
-    }
-  }
-  
-  componentWillUnmount() {
-    // Clean up resources
-    if (this.mathbox) {
-      this.containerRef.current.removeChild(this.mathbox.element);
-      this.mathbox = null;
-    }
-  }
-  
-  setupScene(props) {
-    const { width, height, expression, domain, range, zRange } = props;
-    
-    // Create a cartesian coordinate system
-    this.mathbox
-      .set({
-        scale: Math.min(width, height),
-        focus: 3
-      })
-      .cartesian({
-        range: [domain, range, zRange || [-1, 1]],
-        scale: [1, 1, 1]
-      });
-    
-    // Add standard elements
-    this.addGrids();
-    this.addAxes();
-    
-    // Add the mathematical visualization based on type
-    switch (props.type) {
-      case 'function3D':
-        this.renderFunction3D(props);
-        break;
-      case 'vectorField':
-        this.renderVectorField(props);
-        break;
-      case 'parametricSurface':
-        this.renderParametricSurface(props);
-        break;
-      // Other types...
-      default:
-        console.warn('Unsupported visualization type:', props.type);
-    }
-  }
-  
-  renderFunction3D(props) {
-    const { expression, domain, range, resolution = 64, color = '#3090FF' } = props;
-    
-    // Parse the expression into a function
-    const fn = this.parseExpression(expression);
-    
-    // Create a surface
-    this.mathbox
-      .group()
-      .area({
-        expr: function (emit, x, y, i, j) {
-          emit(x, y, fn(x, y));
-        },
-        width: resolution,
-        height: resolution,
-        axes: [1, 2, 3]
-      })
-      .surface({
-        color: color,
-        shaded: true
-      });
-  }
-  
-  parseExpression(expression) {
-    // Convert string expression to function
-    // This is simplified; you'd want more robust parsing
-    try {
-      // Example for basic functions
-      return new Function('x', 'y', `return ${expression};`);
-    } catch (e) {
-      console.error('Error parsing expression:', e);
-      return (x, y) => 0;
-    }
-  }
-  
-  // Add standard visualizatation utilities
-  addAxes() {
-    this.mathbox
-      .group()
-      .axis({
-        axis: 1,
-        width: 2,
-        color: 'black'
-      })
-      .axis({
-        axis: 2,
-        width: 2,
-        color: 'black'
-      })
-      .axis({
-        axis: 3,
-        width: 2,
-        color: 'black'
-      });
-  }
-  
-  addGrids() {
-    this.mathbox
-      .group()
-      .grid({
-        width: 1,
-        axes: [1, 2],
-        color: '#777777'
-      });
-  }
-  
-  render() {
-    const { width = '100%', height = 400 } = this.props;
-    
-    return (
-      <div 
-        ref={this.containerRef} 
-        style={{ width, height }}
-      />
-    );
-  }
+```json
+{
+  "explanation": "Clear explanation of the mathematical concept",
+  "visualizationParams": {
+    "type": "visualization_type",
+    "title": "Visualization title",
+    // Type-specific parameters...
+  },
+  "educationalContent": {
+    "title": "Educational module title",
+    "summary": "Brief summary of the concept",
+    "steps": [
+      {
+        "title": "Step 1 title",
+        "content": "Step 1 explanation"
+      }
+      // Additional steps...
+    ],
+    "keyInsights": [
+      "Key insight 1",
+      "Key insight 2"
+    ],
+    "exercises": [
+      {
+        "question": "Exercise question",
+        "solution": "Exercise solution"
+      }
+      // Additional exercises...
+    ]
+  },
+  "followUpQuestions": [
+    "Suggested follow-up question 1?",
+    "Suggested follow-up question 2?"
+  ]
 }
 ```
 
-#### Usage Example
+## Core Fields
 
-```jsx
-<MathBoxVisualizer
-  type="function3D"
-  expression="Math.sin(x * 3) * Math.cos(y * 3)"
-  domain={[-2, 2]}
-  range={[-2, 2]}
-  zRange={[-1, 1]}
-  color="#3090FF"
-  width={800}
-  height={500}
-/>
+### 1. explanation
+
+A clear, conversational explanation of the mathematical concept that:
+- Uses accessible language appropriate for the user's level
+- Explains the concept's significance and applications
+- Connects to related mathematical ideas
+- References the visualization where appropriate
+
+Example:
+```json
+"explanation": "The quadratic function f(x) = x² - 3x + 2 is a parabola that opens upward. It has two x-intercepts at x=1 and x=2, and a vertex at the point (1.5, -0.25). This function illustrates how the zeroes (roots) of a quadratic equation relate to its graphical representation."
 ```
 
-### 2. Mafs (React)
+### 2. visualizationParams
 
-Mafs is a modern, React-based library for 2D mathematical visualization.
+Contains all parameters needed to generate the visualization:
 
-#### Basic Integration Pattern
-
-```jsx
-import React from 'react';
-import { Mafs, Coordinates, Plot, Vector, Line, Circle, Theme } from 'mafs';
-
-// Mafs wrapper component for visualization system
-export const MafsVisualizer = ({ 
-  type, 
-  expression, 
-  domain = [-5, 5], 
-  range = [-5, 5], 
-  points = [],
-  vectors = [],
-  lines = [],
-  circles = [],
-  width = '100%',
-  height = 400,
-  showGrid = true,
-  showAxes = true,
-  theme = 'light'
-}) => {
-  // Parse the expression if needed
-  const getFunction = (expr) => {
-    try {
-      // This is simplified; use a proper parser in production
-      return (x) => eval(expr.replace(/x/g, x));
-    } catch (e) {
-      console.error('Error parsing expression:', e);
-      return (x) => 0;
-    }
-  };
-  
-  const renderContent = () => {
-    switch (type) {
-      case 'function':
-        return <Plot.OfX y={getFunction(expression)} color={Theme.blue} />;
-        
-      case 'parametric':
-        // Assume expression is in format: "[x(t), y(t)]" for parametric
-        try {
-          const paramFn = new Function('t', `return ${expression};`);
-          return <Plot.Parametric t={[0, 2 * Math.PI]} xy={paramFn} color={Theme.red} />;
-        } catch (e) {
-          console.error('Error parsing parametric expression:', e);
-          return null;
-        }
-        
-      default:
-        return null;
-    }
-  };
-  
-  return (
-    <div style={{ width, height }}>
-      <Mafs 
-        viewBox={{ x: domain, y: range }} 
-        preserveAspectRatio={false}
-        pan={true}
-        zoom={true}
-      >
-        {showAxes && <Coordinates.Cartesian />}
-        
-        {/* Add points */}
-        {points.map((point, index) => (
-          <Point 
-            key={`point-${index}`}
-            x={point.x} 
-            y={point.y} 
-            color={point.color || Theme.blue}
-          />
-        ))}
-        
-        {/* Add vectors */}
-        {vectors.map((vector, index) => (
-          <Vector 
-            key={`vector-${index}`}
-            tail={vector.tail || [0, 0]}
-            tip={vector.tip}
-            color={vector.color || Theme.red}
-          />
-        ))}
-        
-        {/* Add lines */}
-        {lines.map((line, index) => (
-          <Line 
-            key={`line-${index}`}
-            point={line.point || [0, 0]}
-            slope={line.slope}
-            color={line.color || Theme.green}
-          />
-        ))}
-        
-        {/* Add circles */}
-        {circles.map((circle, index) => (
-          <Circle 
-            key={`circle-${index}`}
-            center={circle.center || [0, 0]}
-            radius={circle.radius}
-            color={circle.color || Theme.indigo}
-          />
-        ))}
-        
-        {/* Render the main content */}
-        {renderContent()}
-      </Mafs>
-    </div>
-  );
-};
+```json
+"visualizationParams": {
+  "type": "function2D",
+  "title": "Quadratic Function",
+  "expression": "x**2 - 3*x + 2",
+  "domain": [-2, 4],
+  "range": [-1, 5],
+  "specialPoints": [
+    {"x": 1, "y": 0, "label": "zero", "description": "x-intercept at x=1"},
+    {"x": 2, "y": 0, "label": "zero", "description": "x-intercept at x=2"},
+    {"x": 1.5, "y": -0.25, "label": "vertex", "description": "Minimum point"}
+  ],
+  "recommendedLibrary": "mafs"
+}
 ```
 
-#### Usage Example
+Common parameters for all visualization types:
+- `type` (required): The visualization type
+- `title` (required): A descriptive title
+- `recommendedLibrary` (optional): Suggested rendering library
+- `annotations` (optional): Additional text annotations
+- `colorScheme` (optional): Color scheme preferences
 
-```jsx
-<MafsVisualizer
-  type="function"
-  expression="Math.sin(x) * x"
-  domain={[-10, 10]}
-  range={[-5, 5]}
-  points={[
-    { x: 0, y: 0, color: "#FF0000" },
-    { x: Math.PI, y: 0, color: "#00FF00" }
-  ]}
-  vectors={[
-    { tip: [2, 2], color: "#0000FF" }
-  ]}
-/>
+### 3. educationalContent
+
+Educational material to accompany the visualization:
+
+```json
+"educationalContent": {
+  "title": "Understanding Quadratic Functions",
+  "summary": "Quadratic functions are polynomial functions of degree 2, represented by f(x) = ax² + bx + c, where a ≠ 0.",
+  "steps": [
+    {
+      "title": "Identifying the Parabola's Direction",
+      "content": "The coefficient 'a' determines whether the parabola opens upward (a > 0) or downward (a < 0)."
+    },
+    {
+      "title": "Finding the Vertex",
+      "content": "The vertex occurs at x = -b/(2a), which can be calculated as -(-3)/(2*1) = 1.5 for our function."
+    },
+    {
+      "title": "Determining x-intercepts",
+      "content": "x-intercepts occur where f(x) = 0. Using the quadratic formula or factoring, we get x = 1 and x = 2."
+    }
+  ],
+  "keyInsights": [
+    "The graph of a quadratic function is always a parabola",
+    "The vertex represents the minimum (if a > 0) or maximum (if a < 0) value of the function",
+    "The discriminant b² - 4ac determines the number of real roots"
+  ],
+  "exercises": [
+    {
+      "question": "How would the graph change if the function were f(x) = -(x² - 3x + 2)?",
+      "solution": "The negative coefficient would cause the parabola to open downward, and the vertex would become a maximum instead of a minimum."
+    },
+    {
+      "question": "Find the range of the function f(x) = x² - 3x + 2.",
+      "solution": "Since the vertex is at (1.5, -0.25) and the parabola opens upward, the range is [-0.25, ∞)."
+    }
+  ]
+}
+```
+
+### 4. followUpQuestions
+
+Suggested questions to continue the learning journey:
+
+```json
+"followUpQuestions": [
+  "How does changing the coefficient 'a' affect the shape of a quadratic function?",
+  "Can you show the relationship between the quadratic formula and the graph?",
+  "What is the discriminant and how does it relate to the number of x-intercepts?"
+]
+```
+
+## Visualization Types and Their Parameters
+
+### 1. function2D
+
+For 2D mathematical functions (y = f(x)):
+
+```json
+{
+  "type": "function2D",
+  "title": "Sine Function",
+  "expression": "Math.sin(x)",
+  "domain": [-Math.PI * 2, Math.PI * 2],
+  "range": [-1.5, 1.5],
+  "gridLines": true,
+  "specialPoints": [
+    {"x": 0, "y": 0, "label": "origin"},
+    {"x": Math.PI/2, "y": 1, "label": "maximum"}
+  ],
+  "derivatives": {
+    "show": true,
+    "order": 1,
+    "color": "#FF0000"
+  },
+  "recommendedLibrary": "mafs"
+}
+```
+
+### 2. functions2D
+
+For multiple 2D functions on the same coordinate system:
+
+```json
+{
+  "type": "functions2D",
+  "title": "Sine and Cosine",
+  "functions": [
+    {
+      "expression": "Math.sin(x)",
+      "label": "sin(x)",
+      "color": "#3090FF"
+    },
+    {
+      "expression": "Math.cos(x)",
+      "label": "cos(x)",
+      "color": "#FF9030"
+    }
+  ],
+  "domain": [-Math.PI * 2, Math.PI * 2],
+  "range": [-1.5, 1.5],
+  "gridLines": true,
+  "recommendedLibrary": "mafs"
+}
+```
+
+### 3. function3D
+
+For 3D surfaces (z = f(x,y)):
+
+```json
+{
+  "type": "function3D",
+  "title": "Paraboloid",
+  "expression": "x**2 + y**2",
+  "domainX": [-3, 3],
+  "domainY": [-3, 3],
+  "range": [0, 10],
+  "resolution": 64,
+  "colormap": "viridis",
+  "view": {
+    "rotation": [0.5, 0.5, 0],
+    "zoom": 0.8
+  },
+  "recommendedLibrary": "mathbox"
+}
+```
+
+### 4. parametric2D
+
+For parametric curves in 2D:
+
+```json
+{
+  "type": "parametric2D",
+  "title": "Circle via Parametric Equation",
+  "parameterName": "t",
+  "parameterRange": [0, 2 * Math.PI],
+  "expressions": {
+    "x": "2 * Math.cos(t)",
+    "y": "2 * Math.sin(t)"
+  },
+  "domain": [-3, 3],
+  "range": [-3, 3],
+  "recommendedLibrary": "mafs"
+}
+```
+
+### 5. parametric3D
+
+For parametric curves and surfaces in 3D:
+
+```json
+{
+  "type": "parametric3D",
+  "title": "Helical Curve",
+  "parameterType": "curve",
+  "parameterNames": ["t"],
+  "parameterRanges": [[0, 6 * Math.PI]],
+  "expressions": {
+    "x": "Math.cos(t)",
+    "y": "Math.sin(t)",
+    "z": "0.2 * t"
+  },
+  "domainX": [-1.5, 1.5],
+  "domainY": [-1.5, 1.5],
+  "domainZ": [0, 4 * Math.PI],
+  "recommendedLibrary": "mathbox"
+}
+```
+
+For parametric surfaces:
+
+```json
+{
+  "type": "parametric3D",
+  "title": "Torus",
+  "parameterType": "surface",
+  "parameterNames": ["u", "v"],
+  "parameterRanges": [[0, 2 * Math.PI], [0, 2 * Math.PI]],
+  "expressions": {
+    "x": "(3 + Math.cos(v)) * Math.cos(u)",
+    "y": "(3 + Math.cos(v)) * Math.sin(u)",
+    "z": "Math.sin(v)"
+  },
+  "domainX": [-4, 4],
+  "domainY": [-4, 4],
+  "domainZ": [-1.5, 1.5],
+  "resolution": 48,
+  "recommendedLibrary": "mathbox"
+}
+```
+
+### 6. vectorField
+
+For vector fields in 2D or 3D:
+
+```json
+{
+  "type": "vectorField",
+  "title": "2D Vector Field",
+  "dimensionality": "2D",
+  "expressions": {
+    "x": "y",
+    "y": "-x"
+  },
+  "domain": [-3, 3],
+  "range": [-3, 3],
+  "density": 15,
+  "normalize": true,
+  "recommendedLibrary": "mafs"
+}
+```
+
+### 7. geometry
+
+For geometric constructions:
+
+```json
+{
+  "type": "geometry",
+  "title": "Triangle with Circumcircle",
+  "elements": [
+    {
+      "type": "point",
+      "id": "A",
+      "coordinates": [0, 0],
+      "label": "A",
+      "color": "#FF0000"
+    },
+    {
+      "type": "point",
+      "id": "B",
+      "coordinates": [4, 0],
+      "label": "B",
+      "color": "#FF0000"
+    },
+    {
+      "type": "point",
+      "id": "C",
+      "coordinates": [2, 3],
+      "label": "C",
+      "color": "#FF0000"
+    },
+    {
+      "type": "polygon",
+      "vertices": ["A", "B", "C"],
+      "id": "triangle",
+      "color": "#3090FF",
+      "fillOpacity": 0.2
+    },
+    {
+      "type": "circle",
+      "id": "circumcircle",
+      "circumscribePoints": ["A", "B", "C"],
+      "color": "#30FF90",
+      "fillOpacity": 0.1
+    }
+  ],
+  "domain": [-1, 5],
+  "range": [-1, 4],
+  "recommendedLibrary": "jsxgraph"
+}
+```
+
+### 8. calculus
+
+For calculus-specific visualizations:
+
+```json
+{
+  "type": "calculus",
+  "subtype": "integral",
+  "title": "Area Under a Curve",
+  "function": {
+    "expression": "x**2",
+    "color": "#3090FF"
+  },
+  "integral": {
+    "lowerBound": 0,
+    "upperBound": 2,
+    "color": "#FF9030",
+    "fillOpacity": 0.3,
+    "approximation": {
+      "method": "rectangles",
+      "count": 10,
+      "show": true
+    }
+  },
+  "domain": [-0.5, 2.5],
+  "range": [-0.5, 4.5],
+  "recommendedLibrary": "mafs"
+}
+```
+
+### 9. probabilityDistribution
+
+For statistical distributions:
+
+```json
+{
+  "type": "probabilityDistribution",
+  "title": "Normal Distribution",
+  "distribution": {
+    "name": "normal",
+    "parameters": {
+      "mean": 0,
+      "standardDeviation": 1
+    }
+  },
+  "domain": [-4, 4],
+  "range": [0, 0.5],
+  "shade": {
+    "regions": [
+      {
+        "from": -1,
+        "to": 1,
+        "label": "68% within 1σ",
+        "color": "#3090FF"
+      }
+    ]
+  },
+  "statistics": {
+    "showMean": true,
+    "showMedian": true,
+    "showStandardDeviation": true
+  },
+  "recommendedLibrary": "d3"
+}
+```
+
+### 10. linearAlgebra
+
+For linear algebra visualizations:
+
+```json
+{
+  "type": "linearAlgebra",
+  "subtype": "transformation",
+  "title": "Linear Transformation",
+  "space": "2D",
+  "matrix": [
+    [2, 1],
+    [1, 1]
+  ],
+  "displayElements": {
+    "grid": true,
+    "unitVectors": true,
+    "additionalVectors": [
+      {
+        "components": [1, 2],
+        "color": "#FF9030",
+        "label": "v"
+      }
+    ]
+  },
+  "animation": {
+    "duration": 1.5,
+    "enabled": true
+  },
+  "domain": [-5, 5],
+  "range": [-5, 5],
+  "recommendedLibrary": "mafs"
+}
+```
+
+## Library-Specific Parameters
+
+### 1. Mafs (React)
+
+```json
+"mafsSpecific": {
+  "viewBox": { "x": [-5, 5], "y": [-5, 5] },
+  "preserveAspectRatio": false,
+  "pannable": true,
+  "zoomable": true,
+  "theme": "light"
+}
+```
+
+### 2. MathBox
+
+```json
+"mathboxSpecific": {
+  "camera": {
+    "position": [3, 2, 1],
+    "fov": 45
+  },
+  "scale": 1,
+  "focus": 3,
+  "plugins": ["core", "controls", "cursor"]
+}
 ```
 
 ### 3. JSXGraph
 
-JSXGraph is versatile for geometry and function plotting.
-
-#### Basic Integration Pattern
-
-```javascript
-import React, { useRef, useEffect } from 'react';
-import JXG from 'jsxgraph';
-import 'jsxgraph/distrib/jsxgraph.css';
-
-export const JSXGraphVisualizer = ({
-  type,
-  expression,
-  domain = [-5, 5],
-  range = [-5, 5],
-  elements = [],
-  width = '100%',
-  height = 400,
-  showAxes = true,
-  showGrid = true,
-  id = `jxg-${Math.random().toString(36).substring(2, 15)}`
-}) => {
-  const containerRef = useRef(null);
-  const boardRef = useRef(null);
-  
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    // Initialize board
-    const bbox = [domain[0], range[1], domain[1], range[0]];
-    boardRef.current = JXG.JSXGraph.initBoard(id, {
-      boundingbox: bbox,
-      axis: showAxes,
-      grid: showGrid,
-      showCopyright: false,
-      showNavigation: true,
-      keepAspectRatio: true
-    });
-    
-    // Render based on type
-    switch (type) {
-      case 'function':
-        renderFunction(expression);
-        break;
-      case 'geometry':
-        renderGeometry(elements);
-        break;
-      case 'parametric':
-        renderParametric(expression);
-        break;
-      default:
-        console.warn('Unsupported visualization type:', type);
-    }
-    
-    // Cleanup
-    return () => {
-      if (boardRef.current) {
-        JXG.JSXGraph.freeBoard(boardRef.current);
-      }
-    };
-  }, [id, type, expression, domain, range, elements, showAxes, showGrid]);
-  
-  const renderFunction = (expr) => {
-    try {
-      boardRef.current.create('functiongraph', [
-        new Function('x', `return ${expr};`),
-        domain[0],
-        domain[1]
-      ], {
-        strokeColor: '#3090FF',
-        strokeWidth: 2
-      });
-    } catch (e) {
-      console.error('Error plotting function:', e);
-    }
-  };
-  
-  const renderGeometry = (elements) => {
-    elements.forEach(element => {
-      switch (element.type) {
-        case 'point':
-          boardRef.current.create('point', element.coords, {
-            name: element.name,
-            size: element.size || 4,
-            color: element.color || 'blue'
-          });
-          break;
-        case 'line':
-          const p1 = boardRef.current.create('point', element.point1, {
-            name: element.name1 || '',
-            visible: element.showPoints
-          });
-          const p2 = boardRef.current.create('point', element.point2, {
-            name: element.name2 || '',
-            visible: element.showPoints
-          });
-          boardRef.current.create('line', [p1, p2], {
-            strokeColor: element.color || 'black',
-            strokeWidth: element.width || 2
-          });
-          break;
-        case 'circle':
-          const center = boardRef.current.create('point', element.center, {
-            name: element.centerName || '',
-            visible: element.showPoints
-          });
-          boardRef.current.create('circle', [
-            center, 
-            element.radius
-          ], {
-            strokeColor: element.color || 'black',
-            strokeWidth: element.width || 2,
-            fillColor: element.fillColor,
-            fillOpacity: element.fillOpacity
-          });
-          break;
-        // Add more element types as needed
-      }
-    });
-  };
-  
-  const renderParametric = (expr) => {
-    try {
-      // Parse the expression which should return [x(t), y(t)]
-      const fn = new Function('t', `return ${expr};`);
-      boardRef.current.create('curve', [
-        t => fn(t)[0],
-        t => fn(t)[1],
-        0, 2 * Math.PI
-      ], {
-        strokeColor: '#FF5733',
-        strokeWidth: 2
-      });
-    } catch (e) {
-      console.error('Error plotting parametric curve:', e);
-    }
-  };
-  
-  return (
-    <div 
-      id={id} 
-      ref={containerRef} 
-      style={{ width, height, border: '1px solid #ccc' }}
-    />
-  );
-};
-```
-
-#### Usage Example
-
-```jsx
-<JSXGraphVisualizer
-  type="geometry"
-  domain={[-5, 5]}
-  range={[-5, 5]}
-  elements={[
-    {
-      type: 'point',
-      coords: [0, 0],
-      name: 'O',
-      color: 'red'
-    },
-    {
-      type: 'circle',
-      center: [0, 0],
-      radius: 2,
-      color: 'blue',
-      fillColor: 'lightblue',
-      fillOpacity: 0.3,
-      showPoints: true
-    },
-    {
-      type: 'line',
-      point1: [1, 1],
-      point2: [3, 3],
-      color: 'green',
-      showPoints: true
-    }
-  ]}
-/>
-```
-
-### 4. Three.js
-
-Three.js provides general 3D visualization capabilities.
-
-#### Basic Integration Pattern
-
-```javascript
-import React, { useRef, useEffect } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-
-export const ThreeJSVisualizer = ({
-  type,
-  expression,
-  domain = [-5, 5],
-  range = [-5, 5],
-  zRange = [-5, 5],
-  resolution = 50,
-  color = '#3090FF',
-  width = '100%',
-  height = 400,
-  backgroundColor = '#f0f0f0'
-}) => {
-  const containerRef = useRef(null);
-  const rendererRef = useRef(null);
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const controlsRef = useRef(null);
-  const frameIdRef = useRef(null);
-  
-  // Set up the scene, camera, renderer, and controls
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    // Setup
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
-    
-    // Scene
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(backgroundColor);
-    sceneRef.current = scene;
-    
-    // Camera
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.set(5, 5, 5);
-    camera.lookAt(0, 0, 0);
-    cameraRef.current = camera;
-    
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    containerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
-    
-    // Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controlsRef.current = controls;
-    
-    // Add lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 1);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
-    
-    // Add coordinate axes
-    const axes = new THREE.AxesHelper(5);
-    scene.add(axes);
-    
-    // Create the visualization
-    createVisualization();
-    
-    // Animation loop
-    const animate = () => {
-      frameIdRef.current = requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    
-    animate();
-    
-    // Handle resize
-    const handleResize = () => {
-      if (!containerRef.current || !renderer || !camera) return;
-      
-      const width = containerRef.current.clientWidth;
-      const height = containerRef.current.clientHeight;
-      
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    // Cleanup
-    return () => {
-      cancelAnimationFrame(frameIdRef.current);
-      window.removeEventListener('resize', handleResize);
-      
-      if (containerRef.current && rendererRef.current) {
-        containerRef.current.removeChild(rendererRef.current.domElement);
-      }
-      
-      // Dispose resources
-      scene.traverse(object => {
-        if (object.geometry) object.geometry.dispose();
-        if (object.material) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      });
-    };
-  }, []);
-  
-  // Create the specific visualization based on type
-  const createVisualization = () => {
-    if (!sceneRef.current) return;
-    
-    const scene = sceneRef.current;
-    
-    switch (type) {
-      case 'function3D':
-        createFunction3D(scene, expression, domain, range, resolution, color);
-        break;
-      case 'parametricSurface':
-        createParametricSurface(scene, expression, resolution, color);
-        break;
-      case 'vectorField':
-        createVectorField(scene, expression, domain, range, zRange, resolution, color);
-        break;
-      case 'pointCloud':
-        createPointCloud(scene, expression, domain, range, zRange, resolution, color);
-        break;
-      default:
-        console.warn('Unsupported visualization type:', type);
-    }
-  };
-  
-  // Create a 3D function surface
-  const createFunction3D = (scene, expression, domain, range, resolution, color) => {
-    try {
-      // Parse the expression
-      const fn = new Function('x', 'y', `return ${expression};`);
-      
-      // Create a parametric geometry for the function
-      const geometry = new THREE.ParametricBufferGeometry(
-        (u, v, target) => {
-          const x = domain[0] + u * (domain[1] - domain[0]);
-          const y = range[0] + v * (range[1] - range[0]);
-          const z = fn(x, y);
-          
-          target.set(x, y, z);
-        },
-        resolution,
-        resolution
-      );
-      
-      // Create material
-      const material = new THREE.MeshPhongMaterial({
-        color: color,
-        side: THREE.DoubleSide,
-        wireframe: false,
-        shininess: 50
-      });
-      
-      // Create mesh and add to scene
-      const mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-      
-    } catch (e) {
-      console.error('Error creating 3D function:', e);
-    }
-  };
-  
-  // Create a parametric surface
-  const createParametricSurface = (scene, expression, resolution, color) => {
-    try {
-      // Parse the expression which should be of form [x(u,v), y(u,v), z(u,v)]
-      const fn = new Function('u', 'v', `return ${expression};`);
-      
-      // Create a parametric geometry
-      const geometry = new THREE.ParametricBufferGeometry(
-        (u, v, target) => {
-          const result = fn(u, v);
-          target.set(result[0], result[1], result[2]);
-        },
-        resolution,
-        resolution
-      );
-      
-      // Create material
-      const material = new THREE.MeshPhongMaterial({
-        color: color,
-        side: THREE.DoubleSide,
-        wireframe: false,
-        shininess: 50
-      });
-      
-      // Create mesh and add to scene
-      const mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-      
-    } catch (e) {
-      console.error('Error creating parametric surface:', e);
-    }
-  };
-  
-  // Create a vector field
-  const createVectorField = (scene, expression, domain, range, zRange, resolution, color) => {
-    try {
-      // Parse the expression which should return [vx, vy, vz]
-      const fn = new Function('x', 'y', 'z', `return ${expression};`);
-      
-      // Create arrows for the vector field
-      const stepX = (domain[1] - domain[0]) / resolution;
-      const stepY = (range[1] - range[0]) / resolution;
-      const stepZ = (zRange[1] - zRange[0]) / resolution;
-      
-      // Create arrows for a subset of points
-      for (let i = 0; i < resolution; i += 3) {
-        for (let j = 0; j < resolution; j += 3) {
-          for (let k = 0; k < resolution; k += 3) {
-            const x = domain[0] + i * stepX;
-            const y = range[0] + j * stepY;
-            const z = zRange[0] + k * stepZ;
-            
-            const vector = fn(x, y, z);
-            
-            // Create arrow
-            const arrowHelper = new THREE.ArrowHelper(
-              new THREE.Vector3(...vector).normalize(),
-              new THREE.Vector3(x, y, z),
-              Math.min(stepX, stepY, stepZ) * 2,
-              color
-            );
-            
-            scene.add(arrowHelper);
-          }
-        }
-      }
-      
-    } catch (e) {
-      console.error('Error creating vector field:', e);
-    }
-  };
-  
-  return (
-    <div 
-      ref={containerRef} 
-      style={{ 
-        width, 
-        height,
-        border: '1px solid #ccc'
-      }}
-    />
-  );
-};
-```
-
-#### Usage Example
-
-```jsx
-<ThreeJSVisualizer
-  type="function3D"
-  expression="Math.sin(x * 2) * Math.cos(y * 2)"
-  domain={[-3, 3]}
-  range={[-3, 3]}
-  resolution={50}
-  color="#4287f5"
-  width="100%"
-  height={500}
-/>
-```
-
-### 5. D3.js
-
-D3.js is powerful for data visualization and custom charts.
-
-#### Basic Integration Pattern
-
-```javascript
-import React, { useRef, useEffect, useState } from 'react';
-import * as d3 from 'd3';
-
-export const D3Visualizer = ({
-  type,
-  data,
-  domain = [-5, 5],
-  range = [-5, 5],
-  expression,
-  width = '100%',
-  height = 400,
-  margin = { top: 40, right: 40, bottom: 60, left: 60 },
-  colors = ['#3090FF', '#FF9030', '#30FF90'],
-  showGrid = true,
-  showAxes = true,
-  title = '',
-  xLabel = '',
-  yLabel = ''
-}) => {
-  const svgRef = useRef(null);
-  const containerRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  
-  // Get container dimensions
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    const resizeObserver = new ResizeObserver(entries => {
-      if (entries.length > 0) {
-        const { width } = entries[0].contentRect;
-        setDimensions({
-          width,
-          height: typeof height === 'number' ? height : 400
-        });
-      }
-    });
-    
-    resizeObserver.observe(containerRef.current);
-    
-    return () => {
-      if (containerRef.current) {
-        resizeObserver.unobserve(containerRef.current);
-      }
-    };
-  }, [height]);
-  
-  // Create the visualization
-  useEffect(() => {
-    if (!svgRef.current || !dimensions.width || !dimensions.height) return;
-    
-    const svg = d3.select(svgRef.current);
-    
-    // Clear existing content
-    svg.selectAll('*').remove();
-    
-    // Set dimensions
-    const chartWidth = dimensions.width - margin.left - margin.right;
-    const chartHeight = dimensions.height - margin.top - margin.bottom;
-    
-    // Create scales
-    const xScale = d3.scaleLinear()
-      .domain(domain)
-      .range([0, chartWidth]);
-      
-    const yScale = d3.scaleLinear()
-      .domain(range)
-      .range([chartHeight, 0]);
-    
-    // Create chart group
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${margin.top})`);
-    
-    // Add grid if requested
-    if (showGrid) {
-      // X grid
-      g.append('g')
-        .attr('class', 'grid')
-        .attr('transform', `translate(0, ${chartHeight})`)
-        .call(
-          d3.axisBottom(xScale)
-            .tickSize(-chartHeight)
-            .tickFormat('')
-        )
-        .selectAll('line')
-        .attr('stroke', '#e0e0e0');
-      
-      // Y grid
-      g.append('g')
-        .attr('class', 'grid')
-        .call(
-          d3.axisLeft(yScale)
-            .tickSize(-chartWidth)
-            .tickFormat('')
-        )
-        .selectAll('line')
-        .attr('stroke', '#e0e0e0');
-    }
-    
-    // Add axes if requested
-    if (showAxes) {
-      // X axis
-      g.append('g')
-        .attr('class', 'x-axis')
-        .attr('transform', `translate(0, ${yScale(0)})`)
-        .call(d3.axisBottom(xScale));
-      
-      // Y axis
-      g.append('g')
-        .attr('class', 'y-axis')
-        .attr('transform', `translate(${xScale(0)}, 0)`)
-        .call(d3.axisLeft(yScale));
-      
-      // X label
-      if (xLabel) {
-        g.append('text')
-          .attr('class', 'x-label')
-          .attr('x', chartWidth / 2)
-          .attr('y', chartHeight + margin.bottom / 1.5)
-          .style('text-anchor', 'middle')
-          .text(xLabel);
-      }
-      
-      // Y label
-      if (yLabel) {
-        g.append('text')
-          .attr('class', 'y-label')
-          .attr('transform', 'rotate(-90)')
-          .attr('x', -chartHeight / 2)
-          .attr('y', -margin.left / 1.5)
-          .style('text-anchor', 'middle')
-          .text(yLabel);
-      }
-    }
-    
-    // Add title if provided
-    if (title) {
-      g.append('text')
-        .attr('class', 'title')
-        .attr('x', chartWidth / 2)
-        .attr('y', -margin.top / 2)
-        .style('text-anchor', 'middle')
-        .style('font-size', '16px')
-        .text(title);
-    }
-    
-    // Render based on visualization type
-    switch (type) {
-      case 'function':
-        renderFunction(g, expression, xScale, yScale, chartWidth, colors[0]);
-        break;
-      case 'scatter':
-        renderScatter(g, data, xScale, yScale, colors[0]);
-        break;
-      case 'bar':
-        renderBar(g, data, xScale, yScale, chartWidth, chartHeight, colors[0]);
-        break;
-      case 'line':
-        renderLine(g, data, xScale, yScale, colors[0]);
-        break;
-      case 'multiLine':
-        renderMultiLine(g, data, xScale, yScale, colors);
-        break;
-      default:
-        console.warn('Unsupported visualization type:', type);
-    }
-    
-  }, [type, data, expression, domain, range, dimensions, margin, colors, showGrid, showAxes, title, xLabel, yLabel]);
-  
-  // Function plotter
-  const renderFunction = (g, expression, xScale, yScale, width, color) => {
-    try {
-      // Parse the expression
-      const fn = new Function('x', `return ${expression};`);
-      
-      // Generate points
-      const points = [];
-      for (let x = domain[0]; x <= domain[1]; x += (domain[1] - domain[0]) / 100) {
-        try {
-          const y = fn(x);
-          if (!isNaN(y) && isFinite(y)) {
-            points.push({ x, y });
-          }
-        } catch (e) {
-          // Skip points where the function is undefined
-        }
-      }
-      
-      // Create a line generator
-      const line = d3.line()
-        .x(d => xScale(d.x))
-        .y(d => yScale(d.y))
-        .curve(d3.curveMonotoneX);
-      
-      // Draw the line
-      g.append('path')
-        .datum(points)
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', 2)
-        .attr('d', line);
-      
-    } catch (e) {
-      console.error('Error rendering function:', e);
-    }
-  };
-  
-  // Scatter plot renderer
-  const renderScatter = (g, data, xScale, yScale, color) => {
-    g.selectAll('circle')
-      .data(data)
-      .enter()
-      .append('circle')
-      .attr('cx', d => xScale(d.x))
-      .attr('cy', d => yScale(d.y))
-      .attr('r', d => d.size || 5)
-      .attr('fill', d => d.color || color)
-      .attr('opacity', d => d.opacity || 0.7);
-  };
-  
-  // Line chart renderer
-  const renderLine = (g, data, xScale, yScale, color) => {
-    const line = d3.line()
-      .x(d => xScale(d.x))
-      .y(d => yScale(d.y))
-      .curve(d3.curveMonotoneX);
-    
-    g.append('path')
-      .datum(data)
-      .attr('fill', 'none')
-      .attr('stroke', color)
-      .attr('stroke-width', 2)
-      .attr('d', line);
-    
-    // Add points
-    g.selectAll('circle')
-      .data(data)
-      .enter()
-      .append('circle')
-      .attr('cx', d => xScale(d.x))
-      .attr('cy', d => yScale(d.y))
-      .attr('r', 4)
-      .attr('fill', color);
-  };
-  
-  // Multi-line chart renderer
-  const renderMultiLine = (g, data, xScale, yScale, colors) => {
-    // data should be an array of series
-    data.forEach((series, i) => {
-      const line = d3.line()
-        .x(d => xScale(d.x))
-        .y(d => yScale(d.y))
-        .curve(d3.curveMonotoneX);
-      
-      const color = series.color || colors[i % colors.length];
-      
-      g.append('path')
-        .datum(series.values)
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', 2)
-        .attr('d', line);
-      
-      // Add a legend item
-      if (series.name) {
-        g.append('rect')
-          .attr('x', 10)
-          .attr('y', 10 + i * 20)
-          .attr('width', 10)
-          .attr('height', 10)
-          .attr('fill', color);
-        
-        g.append('text')
-          .attr('x', 25)
-          .attr('y', 19 + i * 20)
-          .attr('font-size', '12px')
-          .text(series.name);
-      }
-    });
-  };
-  
-  return (
-    <div ref={containerRef} style={{ width, height }}>
-      <svg
-        ref={svgRef}
-        width={dimensions.width}
-        height={dimensions.height}
-      />
-    </div>
-  );
-};
-```
-
-#### Usage Example
-
-```jsx
-<D3Visualizer
-  type="function"
-  expression="Math.sin(x) * Math.exp(-0.1 * x * x)"
-  domain={[-10, 10]}
-  range={[-1.5, 1.5]}
-  width="100%"
-  height={400}
-  title="Damped Sine Wave"
-  xLabel="x"
-  yLabel="y"
-  colors={['#3090FF']}
-/>
-```
-
-## Universal VisualizationWrapper
-
-This is a universal component that can select the appropriate library based on visualization requirements:
-
-```jsx
-import React from 'react';
-import { MafsVisualizer } from './visualizers/MafsVisualizer';
-import { MathBoxVisualizer } from './visualizers/MathBoxVisualizer';
-import { ThreeJSVisualizer } from './visualizers/ThreeJSVisualizer';
-import { JSXGraphVisualizer } from './visualizers/JSXGraphVisualizer';
-import { D3Visualizer } from './visualizers/D3Visualizer';
-// Import other visualizers as needed
-
-export const VisualizationWrapper = (props) => {
-  const {
-    library,
-    type,
-    expression,
-    data,
-    domain,
-    range,
-    zRange,
-    points,
-    lines,
-    vectors,
-    circles,
-    elements,
-    width,
-    height,
-    options = {}
-  } = props;
-  
-  // Select library based on provided library prop or visualization requirements
-  const selectLibrary = () => {
-    if (library) return library;
-    
-    // Auto-select library based on visualization type
-    if (type.includes('3D') || zRange) {
-      return 'mathbox'; // Prefer MathBox for 3D
-    }
-    
-    if (type === 'function' && !options.requiresCustomization) {
-      return 'mafs'; // Default for simple functions in React
-    }
-    
-    if (type === 'geometry') {
-      return 'jsxgraph'; // Default for geometry
-    }
-    
-    if (type === 'data' || data) {
-      return 'd3'; // Default for data visualization
-    }
-    
-    // Default fallback
-    return 'jsxgraph';
-  };
-  
-  const selectedLibrary = selectLibrary();
-  
-  // Render the appropriate visualizer
-  switch (selectedLibrary) {
-    case 'mafs':
-      return (
-        <MafsVisualizer
-          type={type}
-          expression={expression}
-          domain={domain}
-          range={range}
-          points={points}
-          vectors={vectors}
-          lines={lines}
-          circles={circles}
-          width={width}
-          height={height}
-          {...options}
-        />
-      );
-      
-    case 'mathbox':
-      return (
-        <MathBoxVisualizer
-          type={type}
-          expression={expression}
-          domain={domain}
-          range={range}
-          zRange={zRange}
-          width={width}
-          height={height}
-          {...options}
-        />
-      );
-      
-    case 'three':
-      return (
-        <ThreeJSVisualizer
-          type={type}
-          expression={expression}
-          domain={domain}
-          range={range}
-          zRange={zRange}
-          width={width}
-          height={height}
-          {...options}
-        />
-      );
-      
-    case 'jsxgraph':
-      return (
-        <JSXGraphVisualizer
-          type={type}
-          expression={expression}
-          domain={domain}
-          range={range}
-          elements={elements || []}
-          width={width}
-          height={height}
-          {...options}
-        />
-      );
-      
-    case 'd3':
-      return (
-        <D3Visualizer
-          type={type}
-          expression={expression}
-          data={data}
-          domain={domain}
-          range={range}
-          width={width}
-          height={height}
-          {...options}
-        />
-      );
-      
-    // Add cases for other libraries
-      
-    default:
-      return (
-        <div>
-          <p>Unsupported library: {selectedLibrary}</p>
-        </div>
-      );
+```json
+"jsxgraphSpecific": {
+  "boundingBox": [-5, 5, 5, -5],
+  "keepAspectRatio": true,
+  "showNavigation": true,
+  "pan": {
+    "enabled": true,
+    "needShift": false
+  },
+  "zoom": {
+    "enabled": true,
+    "factorX": 1.25,
+    "factorY": 1.25
   }
-};
+}
 ```
 
-## Converting Between Libraries
+### 4. D3.js
 
-When switching between libraries, use these conversion functions:
-
-```javascript
-// Convert visualization parameters between libraries
-export const convertParameters = (params, fromLibrary, toLibrary) => {
-  if (fromLibrary === toLibrary) return params;
-  
-  const result = { ...params };
-  
-  // Example conversions
-  if (fromLibrary === 'mafs' && toLibrary === 'jsxgraph') {
-    // Convert domain/range format
-    result.boundingBox = [
-      params.domain[0], 
-      params.range[1], 
-      params.domain[1], 
-      params.range[0]
-    ];
-    
-    // Convert points format if needed
-    if (params.points) {
-      result.elements = params.points.map(point => ({
-        type: 'point',
-        coords: [point.x, point.y],
-        name: point.name || '',
-        color: point.color || 'blue'
-      }));
-    }
+```json
+"d3Specific": {
+  "margin": { "top": 40, "right": 40, "bottom": 60, "left": 60 },
+  "transitionDuration": 500,
+  "responsiveResize": true,
+  "tooltip": {
+    "enabled": true,
+    "format": ".2f"
+  },
+  "legend": {
+    "position": "bottom",
+    "columns": 2
   }
-  
-  // Add more conversions as needed
-  
-  return result;
-};
-
-// Convert mathematical expressions between library formats
-export const convertExpression = (expression, fromFormat, toFormat) => {
-  if (fromFormat === toFormat) return expression;
-  
-  // Example conversions
-  if (fromFormat === 'generic' && toFormat === 'mathbox') {
-    // Replace Math functions with direct calls
-    return expression
-      .replace(/Math\.sin/g, 'sin')
-      .replace(/Math\.cos/g, 'cos')
-      .replace(/Math\.tan/g, 'tan')
-      .replace(/Math\.exp/g, 'exp')
-      .replace(/Math\.log/g, 'log')
-      .replace(/Math\.sqrt/g, 'sqrt');
-  }
-  
-  // Add more conversions as needed
-  
-  return expression;
-};
+}
 ```
 
-## Integration Complexity Assessment
+## Best Practices for Output Format
 
-Here's a quick reference for integration complexity of each library:
+1. **Ensure Mathematical Accuracy**
+   - Use precise mathematical expressions
+   - Validate all ranges and domains
+   - Double-check coordinate points for special features
 
-| Library | Integration Complexity | React Support | 3D Support | Interactivity |
-|---------|------------------------|--------------|------------|---------------|
-| Mafs | Low | Native | No | Medium |
-| JSXGraph | Medium | Via Wrapper | Limited | High |
-| MathBox | High | Via Wrapper | Excellent | Medium |
-| Three.js | High | Via Wrapper | Excellent | High |
-| D3.js | High | Via Wrapper | Limited | High |
-| CindyJS | Medium-High | Via Wrapper | Limited | High |
-| Desmos | Low | Via Wrapper | No | Medium |
-| p5.js | Low | Via Wrapper | Limited | High |
-| GeoGebra | Low | Embedding | Limited | High |
+2. **Prioritize Clarity**
+   - Choose meaningful titles and labels
+   - Use descriptive variable names
+   - Include only relevant information in the visualization
 
-When selecting a library, consider these factors along with the specific visualization requirements and your application's constraints.
+3. **Adapt to Complexity**
+   - For basic concepts, keep parameters simple
+   - For advanced concepts, provide more detailed parameters
+   - Balance visual complexity with educational clarity
+
+4. **Handle Edge Cases**
+   - Account for asymptotes and discontinuities
+   - Consider domain and range limitations
+   - Provide guidance for handling undefined regions
+
+5. **Support Accessibility**
+   - Include textual descriptions of visual features
+   - Ensure color schemes work for color-blind users
+   - Provide alternative explanations for visual concepts
+
+## Testing and Validation
+
+Before finalizing the output format:
+
+1. Validate the JSON structure is well-formed
+2. Ensure all required parameters are present
+3. Check that expressions are valid JavaScript
+4. Confirm ranges and domains are appropriate
+5. Test rendering in the target library
+
+## Example Complete Response
+
+```json
+{
+  "explanation": "The sine and cosine functions are fundamental trigonometric functions with a beautiful relationship. They are essentially the same function, just shifted by π/2 radians (90 degrees). When plotted together, you can see this phase relationship clearly: when sine is at its maximum or minimum, cosine is at zero, and vice versa.",
+  
+  "visualizationParams": {
+    "type": "functions2D",
+    "title": "Sine and Cosine Functions",
+    "functions": [
+      {
+        "expression": "Math.sin(x)",
+        "label": "sin(x)",
+        "color": "#4285F4"
+      },
+      {
+        "expression": "Math.cos(x)",
+        "label": "cos(x)",
+        "color": "#EA4335"
+      }
+    ],
+    "domain": [-6.28, 6.28],
+    "range": [-1.5, 1.5],
+    "gridLines": true,
+    "xLabel": "x (radians)",
+    "yLabel": "y",
+    "xTicks": [
+      {"value": -6.28, "label": "-2π"},
+      {"value": -3.14, "label": "-π"},
+      {"value": 0, "label": "0"},
+      {"value": 3.14, "label": "π"},
+      {"value": 6.28, "label": "2π"}
+    ],
+    "specialPoints": [
+      {"x": 0, "y": 0, "label": "Origin"},
+      {"x": 1.57, "y": 1, "label": "sin(π/2) = 1"},
+      {"x": 0, "y": 1, "label": "cos(0) = 1"}
+    ],
+    "recommendedLibrary": "mafs"
+  },
+  
+  "educationalContent": {
+    "title": "The Relationship Between Sine and Cosine",
+    "summary": "Sine and cosine are complementary functions related through the unit circle and a phase shift of π/2.",
+    "steps": [
+      {
+        "title": "Unit Circle Representation",
+        "content": "On the unit circle, cos(θ) is the x-coordinate and sin(θ) is the y-coordinate of the point at angle θ from the positive x-axis."
+      },
+      {
+        "title": "Phase Shift Relationship",
+        "content": "Cosine is the same as sine, but shifted by π/2: cos(x) = sin(x + π/2). Similarly, sin(x) = cos(x - π/2)."
+      },
+      {
+        "title": "Pythagorean Identity",
+        "content": "For any value of θ, sin²(θ) + cos²(θ) = 1. This reflects the fact that any point on the unit circle is at distance 1 from the origin."
+      }
+    ],
+    "keyInsights": [
+      "Sine and cosine have the same shape and amplitude, just shifted horizontally",
+      "When sine reaches its maximum (1) or minimum (-1), cosine is at zero",
+      "When cosine reaches its maximum (1) or minimum (-1), sine is at zero",
+      "Both functions have a period of 2π (360 degrees), repeating the same values over each cycle"
+    ],
+    "exercises": [
+      {
+        "question": "If sin(θ) = 0.5, what are the possible values of cos(θ)?",
+        "solution": "Using the Pythagorean identity sin²(θ) + cos²(θ) = 1, we can solve for cos(θ): cos²(θ) = 1 - sin²(θ) = 1 - 0.5² = 1 - 0.25 = 0.75. Therefore, cos(θ) = ±√0.75 = ±0.866."
+      },
+      {
+        "question": "What is the phase difference between sine and cosine in degrees?",
+        "solution": "The phase difference is π/2 radians, which is equivalent to 90 degrees."
+      }
+    ]
+  },
+  
+  "followUpQuestions": [
+    "How are sine and cosine related to the tangent function?",
+    "Can you show me the unit circle representation of sine and cosine?",
+    "What are the derivatives of sine and cosine functions?"
+  ]
+}
+```
+
+By following this output format guide, the LLM will generate consistent, structured data that the visualization system can reliably process to create accurate, educational mathematical visualizations.
