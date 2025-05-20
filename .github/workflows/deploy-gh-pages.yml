@@ -3,6 +3,12 @@ name: Deploy Math-LLM to GitHub Pages
 on:
   workflow_dispatch:  # Allows manual triggering
 
+permissions:
+  contents: write  # Required for actions/checkout and pushing to gh-pages
+  pages: write     # Required for actions/configure-pages
+  id-token: write  # Required for authentication
+  deployments: write  # Required for deployments
+
 jobs:
   deploy-to-pages:
     runs-on: ubuntu-latest
@@ -55,7 +61,7 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./dist
         force_orphan: true  # Create a new orphan branch for the deployment
-        include_dotfiles: true  # Make sure .nojekyll is included in deployment
+        disable_nojekyll: false  # Ensure .nojekyll file is kept
     
     - name: Output deployment URL
       run: |
