@@ -20,13 +20,30 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
-    - name: Create demo build
+    - name: Create demo build (skip tests)
       run: |
-        # Skip tests and just build the demo directly
-        npx webpack --mode production --config webpack.demo.config.js
+        echo "Skipping tests and building demo directly"
+        npm run build:skip-tests
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        SKIP_TESTS: 'true'
+        
+    - name: Verify build
+      run: |
+        echo "Contents of dist directory:"
+        ls -la dist/
+        if [ -f "dist/index.html" ]; then
+          echo "✓ index.html exists"
+        else
+          echo "✗ index.html is missing!"
+          exit 1
+        fi
+    
+    - name: Add .nojekyll file
+      run: |
+        touch ./dist/.nojekyll
+        echo "Created .nojekyll file to prevent Jekyll processing"
     
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3

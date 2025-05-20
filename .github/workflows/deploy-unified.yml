@@ -1,7 +1,12 @@
-name: Deploy Math-LLM to GitHub Pages
+name: Deploy Math-LLM to GitHub Pages (Unified)
 
 on:
   workflow_dispatch:  # Allows manual triggering
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   deploy-to-pages:
@@ -32,6 +37,7 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         SKIP_TESTS: 'true'
+        GITHUB_ACTIONS: 'true'
     
     - name: Verify build
       run: |
@@ -43,11 +49,22 @@ jobs:
           echo "✗ index.html is missing!"
           exit 1
         fi
+        
+        echo "Environment variables used for the build:"
+        echo "- SKIP_TESTS: $SKIP_TESTS"
+        echo "- GITHUB_ACTIONS: $GITHUB_ACTIONS"
+        echo "- GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
     
     - name: Add .nojekyll file
       run: |
         touch ./dist/.nojekyll
         echo "Created .nojekyll file to prevent Jekyll processing"
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+      with:
+        # Specify deployment source branch
+        source_dir: ./dist
     
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -59,7 +76,7 @@ jobs:
     
     - name: Output deployment URL
       run: |
-        echo "Deployed to: https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/math-llm/"
+        echo "Deployed to: https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/Math-LLM/"
         echo "If you see a 404 error, please check that:"
         echo "1. The repository settings have GitHub Pages enabled"
         echo "2. The deployment branch (gh-pages) exists and contains the correct files"

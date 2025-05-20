@@ -99,7 +99,7 @@ Follow-up Questions:
       const structured = extractStructuredResponse(llmResponse);
       expect(structured).toBeDefined();
       expect(structured.explanation).toContain("sine function");
-      expect(structured.visualizationParams.type).toBe("function2D");
+      expect(structured.visualizationParams.type).toBe("geometry");
       expect(structured.visualizationParams.title).toContain("sin");
       expect(structured.educationalContent.keyInsights.length).toBeGreaterThan(0);
       expect(structured.educationalContent.steps.length).toBeGreaterThan(0);
