@@ -34,7 +34,8 @@ const getPublicPath = () => {
       return '/';
     }
     // Otherwise use the repository name as the base path
-    return `/${repoName}/`;
+    // Fix case sensitivity issue - GitHub Pages URLs are case-sensitive
+    return `/Math-LLM/`;
   }
   return './';
 };

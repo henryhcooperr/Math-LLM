@@ -56,10 +56,14 @@ jobs:
         echo "- GITHUB_ACTIONS: $GITHUB_ACTIONS"
         echo "- GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
     
-    - name: Add .nojekyll file
+    - name: Add .nojekyll file and copy HTML files
       run: |
         touch ./dist/.nojekyll
         echo "Created .nojekyll file to prevent Jekyll processing"
+        cp index.html ./dist/
+        cp 404.html ./dist/
+        echo "Copied root index.html and 404.html to dist directory"
+        ls -la ./dist/
     
     - name: Setup Pages
       uses: actions/configure-pages@v3

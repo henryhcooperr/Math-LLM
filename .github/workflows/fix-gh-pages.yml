@@ -1,0 +1,72 @@
+name: Fix GitHub Pages Deployment
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  deployments: write
+
+jobs:
+  fix-gh-pages:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Create deployment files
+      run: |
+        mkdir -p dist
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset='utf-8'>
+          <title>Math-LLM Demo</title>
+          <meta name='viewport' content='width=device-width, initial-scale=1'>
+          <meta http-equiv='refresh' content='0;url=./dist/index.html'>
+        </head>
+        <body>
+          <h1>Math-LLM Demo</h1>
+          <p>If you are not redirected, <a href='./dist/index.html'>click here</a>.</p>
+        </body>
+        </html>" > index.html
+        
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset='utf-8'>
+          <title>Math-LLM Demo</title>
+          <meta name='viewport' content='width=device-width, initial-scale=1'>
+        </head>
+        <body>
+          <h1>Math-LLM Demo</h1>
+          <p>This is a simple static page to test GitHub Pages deployment.</p>
+          <p>The full application will be built and deployed by the regular workflow.</p>
+        </body>
+        </html>" > dist/index.html
+        
+        touch .nojekyll
+        touch dist/.nojekyll
+    
+    - name: List files
+      run: |
+        echo "Root directory:"
+        ls -la
+        echo ""
+        echo "dist directory:"
+        ls -la dist/
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./
+        force_orphan: true  # Create a new orphan branch for the deployment
+        disable_nojekyll: false  # Ensure .nojekyll file is kept
+    
+    - name: Output deployment URL
+      run: |
+        echo "Deployed to: https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/Math-LLM/"
