@@ -15,7 +15,8 @@
       "Bash(npm run demo:*)",
       "Bash(lsof:*)",
       "Bash(find:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

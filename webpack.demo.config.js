@@ -3,6 +3,19 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const Dotenv = require('dotenv-webpack');
 
+// Check if we're in the GitHub Actions environment
+const isGitHubAction = process.env.GITHUB_ACTIONS === 'true';
+const skipTests = process.env.SKIP_TESTS === 'true';
+
+// Log environment variables for debugging (in build process only)
+if (isGitHubAction || skipTests) {
+  console.log('Building with environment variables:');
+  console.log('- GITHUB_ACTIONS:', process.env.GITHUB_ACTIONS);
+  console.log('- SKIP_TESTS:', process.env.SKIP_TESTS);
+  console.log('- OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
+  console.log('- ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY);
+}
+
 module.exports = {
   entry: './src/demo/index.js',
   output: {
@@ -42,7 +55,9 @@ module.exports = {
     // This allows webpack to use environment variables from the build process
     new webpack.DefinePlugin({
       'process.env.OPENAI_API_KEY': JSON.stringify(process.env.OPENAI_API_KEY),
-      'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY)
+      'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY),
+      'process.env.SKIP_TESTS': JSON.stringify(process.env.SKIP_TESTS || 'false'),
+      'process.env.GITHUB_ACTIONS': JSON.stringify(process.env.GITHUB_ACTIONS || 'false')
     })
   ],
   devServer: {
